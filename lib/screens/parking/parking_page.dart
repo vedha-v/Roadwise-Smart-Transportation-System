@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'parking_details_page.dart';
 
 class ParkingPage extends StatelessWidget {
   const ParkingPage({super.key});
@@ -64,30 +65,69 @@ class ParkingPage extends StatelessWidget {
 
             const SizedBox(height: 12),
 
-            const _ParkingCard(
-              name: 'City Centre Parking',
-              distance: '0.4 km',
-              availableSlots: 18,
-              price: '₹40/hr',
-            ),
+            _ParkingCard(
+  name: 'City Centre Parking',
+  distance: '0.4 km',
+  availableSlots: 18,
+  price: '₹40/hr',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ParkingDetailsPage(
+          name: 'City Centre Parking',
+          distance: '0.4 km',
+          availableSlots: 18,
+          price: '₹40/hr',
+        ),
+      ),
+    );
+  },
+),
 
             const SizedBox(height: 12),
 
-            const _ParkingCard(
-              name: 'Metro Plaza Parking',
-              distance: '0.8 km',
-              availableSlots: 7,
-              price: '₹30/hr',
-            ),
+            _ParkingCard(
+  name: 'City Centre Parking',
+  distance: '0.4 km',
+  availableSlots: 18,
+  price: '₹40/hr',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ParkingDetailsPage(
+          name: 'City Centre Parking',
+          distance: '0.4 km',
+          availableSlots: 18,
+          price: '₹40/hr',
+        ),
+      ),
+    );
+  },
+),
 
             const SizedBox(height: 12),
 
-            const _ParkingCard(
-              name: 'Central Mall Parking',
-              distance: '1.2 km',
-              availableSlots: 32,
-              price: '₹50/hr',
-            ),
+            _ParkingCard(
+  name: 'Central Mall Parking',
+  distance: '1.2 km',
+  availableSlots: 32,
+  price: '₹50/hr',
+  onTap: () {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const ParkingDetailsPage(
+          name: 'Central Mall Parking',
+          distance: '1.2 km',
+          availableSlots: 32,
+          price: '₹50/hr',
+        ),
+      ),
+    );
+  },
+),
           ],
         ),
       ),
@@ -100,17 +140,22 @@ class _ParkingCard extends StatelessWidget {
   final String distance;
   final int availableSlots;
   final String price;
+  final VoidCallback? onTap;
 
   const _ParkingCard({
     required this.name,
     required this.distance,
     required this.availableSlots,
     required this.price,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      child: InkWell(
+    onTap: onTap,
+    borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -154,11 +199,12 @@ class _ParkingCard extends StatelessWidget {
               price,
               style: const TextStyle(
                 fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      )
     );
   }
 }
