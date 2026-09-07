@@ -5,6 +5,8 @@ import '../screens/explore/explore_page.dart';
 import '../screens/bookings/bookings_page.dart';
 import '../screens/profile/profile_page.dart';
 
+
+
 class RoadWiseApp extends StatelessWidget {
   const RoadWiseApp({super.key});
 
