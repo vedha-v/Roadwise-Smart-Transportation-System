@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../screens/parking/parking_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -70,6 +71,14 @@ class HomePage extends StatelessWidget {
                   child: _QuickAction(
                     icon: Icons.local_parking,
                     label: 'Parking',
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const ParkingPage(),
+                        ),
+                      );
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -189,15 +198,20 @@ class HomePage extends StatelessWidget {
 class _QuickAction extends StatelessWidget {
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
 
   const _QuickAction({
     required this.icon,
     required this.label,
+    this.onTap
   });
 
   @override
   Widget build(BuildContext context) {
     return Card(
+      child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 20),
         child: Column(
@@ -208,11 +222,12 @@ class _QuickAction extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      )
     );
   }
 }
