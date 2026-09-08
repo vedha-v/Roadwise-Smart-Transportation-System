@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../screens/parking/parking_page.dart';
+import '../../screens/ev/ev_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
@@ -82,14 +83,22 @@ class HomePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Expanded(
+               Expanded(
                   child: _QuickAction(
-                    icon: Icons.ev_station,
-                    label: 'EV Charging',
-                  ),
+                  icon: Icons.ev_station,
+                  label: 'EV Charging',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EvPage(),
+                      ),
+                    );
+                  },
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
 
             const SizedBox(height: 12),
 
