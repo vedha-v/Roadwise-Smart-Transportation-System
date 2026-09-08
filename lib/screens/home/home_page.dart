@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../screens/parking/parking_page.dart';
+import '../../screens/ev/ev_page.dart';
 
 /// RoadWise palette — blue grain-gradient backdrop + frosted glass cards,
 /// styled after the fintech-app reference (dark glass cards, warm gradient
@@ -136,53 +137,27 @@ class HomePage extends StatelessWidget {
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Current traffic',
-                          style: TextStyle(
-                            color: Colors.black54,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        const Text(
-                          'Moderate',
-                          style: TextStyle(
-                            color: Colors.black,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 30,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          height: 46,
-                          width: double.infinity,
-                          child: CustomPaint(
-                            painter: _SparklinePainter(
-                              values: const [
-                                0.3,
-                                0.45,
-                                0.35,
-                                0.6,
-                                0.5,
-                                0.75,
-                                0.55,
-                                0.68
-                              ],
-                              lineColor: Colors.black.withValues(alpha: 0.55),
-                              fillColor: Colors.black.withValues(alpha: 0.08),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      );
+                    },
                   ),
+                ),
+                const SizedBox(width: 12),
+               Expanded(
+                  child: _QuickAction(
+                  icon: Icons.ev_station,
+                  label: 'EV Charging',
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const EvPage(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
 
                   const SizedBox(height: 24),
 

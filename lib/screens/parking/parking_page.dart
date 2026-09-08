@@ -9,7 +9,7 @@ class ParkingLot {
   final String distance;
   final int totalSlots;
   final String price;
-  final Set<int> occupiedSlots;
+final Set<int> occupiedSlots;
 
   ParkingLot({
     required this.name,
@@ -166,9 +166,11 @@ class ParkingCard extends StatelessWidget {
             border: Border.all(color: Colors.grey.shade200),
             boxShadow: [
               BoxShadow(
+
                 color: Colors.black.withValues(alpha: 0.08),
-                blurRadius: 4,
+                 blurRadius: 4,
                 offset: const Offset(0, 2),
+               
               ),
             ],
           ),
