@@ -21,7 +21,7 @@ class _RWColors {
   // enough to stay visible against the blue gradient background.
   static const iconOrange = Color(0xFFFFA352); // primary icon color
   static const iconOrangeLight = Color(0xFFFFC38C); // lighter shade
-  static const iconOrangeDeep = Color(0xFFFF7A33); // deeper shade
+  //static const iconOrangeDeep = Color(0xFFFF7A33); // deeper shade
 
   static const traffic = Color(0xFFFFA352);
   static const parking = Color(0xFFFFC38C);
@@ -121,6 +121,8 @@ class HomePage extends StatelessWidget {
 
                   // Hero card — headline traffic status + sparkline,
                   // echoing the reference app's gradient balance card.
+                                   // Hero card — headline traffic status + sparkline,
+                  // echoing the reference app's gradient balance card.
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(22),
@@ -133,31 +135,36 @@ class HomePage extends StatelessWidget {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFFF7A59).withValues(alpha: 0.35),
+                          color: const Color(0xFFFF7A59)
+                              .withValues(alpha: 0.35),
                           blurRadius: 24,
                           offset: const Offset(0, 12),
                         ),
-                      );
-                    },
+                      ],
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Traffic status',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Moderate',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 30,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-               Expanded(
-                  child: _QuickAction(
-                  icon: Icons.ev_station,
-                  label: 'EV Charging',
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const EvPage(),
-                      ),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
 
                   const SizedBox(height: 24),
 
@@ -182,6 +189,14 @@ class HomePage extends StatelessWidget {
                       _QuickActionIcon(
                         icon: Icons.ev_station,
                         label: 'EV Charging',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EvPage(),
+                            ),
+                          );
+                        },
                       ),
                       _QuickActionIcon(
                         icon: Icons.traffic,
@@ -193,6 +208,7 @@ class HomePage extends StatelessWidget {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 14),
 
                   const SizedBox(height: 26),
 
@@ -279,7 +295,7 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-      bottomNavigationBar: const _RWBottomBar(),
+     
     );
   }
 }
@@ -460,109 +476,5 @@ class _RWDivider extends StatelessWidget {
 
 /// Purely decorative bottom bar — no new routes wired up, matches the
 /// reference app's minimal icon nav.
-class _RWBottomBar extends StatelessWidget {
-  const _RWBottomBar();
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-      child: _GlassContainer(
-        borderRadius: 26,
-        padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
-        child: const Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _RWNavItem(icon: Icons.home_rounded, active: true),
-            _RWNavItem(icon: Icons.chat_bubble_outline),
-            _RWNavItem(icon: Icons.add_circle_outline),
-            _RWNavItem(icon: Icons.bar_chart_rounded),
-            _RWNavItem(icon: Icons.person_outline),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
-class _RWNavItem extends StatelessWidget {
-  final IconData icon;
-  final bool active;
-
-  const _RWNavItem({required this.icon, this.active = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 44,
-      height: 44,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: active ? Colors.white : Colors.transparent,
-        shape: BoxShape.circle,
-      ),
-      child: Icon(
-        icon,
-        size: 20,
-        color: active ? _RWColors.iconOrangeDeep : _RWColors.iconOrangeLight,
-      ),
-    );
-  }
-}
-
-/// Lightweight area-sparkline, no chart package required.
-class _SparklinePainter extends CustomPainter {
-  final List<double> values; // normalized 0..1
-  final Color lineColor;
-  final Color fillColor;
-
-  _SparklinePainter({
-    required this.values,
-    required this.lineColor,
-    required this.fillColor,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (values.isEmpty) return;
-
-    final dx = size.width / (values.length - 1);
-    final points = <Offset>[
-      for (int i = 0; i < values.length; i++)
-        Offset(i * dx, size.height * (1 - values[i]))
-    ];
-
-    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      final prev = points[i - 1];
-      final curr = points[i];
-      final mid = Offset((prev.dx + curr.dx) / 2, (prev.dy + curr.dy) / 2);
-      linePath.quadraticBezierTo(prev.dx, prev.dy, mid.dx, mid.dy);
-    }
-    linePath.lineTo(points.last.dx, points.last.dy);
-
-    final fillPath = Path.from(linePath)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-
-    canvas.drawPath(
-      fillPath,
-      Paint()
-        ..color = fillColor
-        ..style = PaintingStyle.fill,
-    );
-
-    canvas.drawPath(
-      linePath,
-      Paint()
-        ..color = lineColor
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.4
-        ..strokeCap = StrokeCap.round,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _SparklinePainter oldDelegate) => false;
-}
