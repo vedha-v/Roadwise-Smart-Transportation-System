@@ -121,7 +121,7 @@ class _ParkingPageState extends State<ParkingPage> {
             Expanded(
               child: ListView.separated(
                 itemCount: lots.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final lot = lots[index];
                   return ParkingCard(
