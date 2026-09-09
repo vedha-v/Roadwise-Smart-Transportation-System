@@ -9,7 +9,7 @@ class ParkingLot {
   final String distance;
   final int totalSlots;
   final String price;
-final Set<int> occupiedSlots;
+  final Set<int> occupiedSlots;
 
   ParkingLot({
     required this.name,
@@ -23,7 +23,7 @@ final Set<int> occupiedSlots;
 }
 
 // ============================================================
-// PARKING PAGE (now stateful — holds the source of truth)
+// PARKING PAGE
 // ============================================================
 
 class ParkingPage extends StatefulWidget {
@@ -60,8 +60,6 @@ class _ParkingPageState extends State<ParkingPage> {
   ];
 
   Future<void> _openLot(ParkingLot lot) async {
-    // Wait for the slots page to return the slot number that was reserved
-    // (or null if the user backed out without reserving).
     final reservedSlot = await Navigator.push<int?>(
       context,
       MaterialPageRoute(
@@ -78,52 +76,86 @@ class _ParkingPageState extends State<ParkingPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'Smart Parking',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            // --------------------------------------------------
+            // HEADER
+            // --------------------------------------------------
+
+            Text(
               'Find a parking spot',
-              style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             const SizedBox(height: 8),
+
             Text(
               'Find available parking near your destination.',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
             ),
+
             const SizedBox(height: 24),
+
+            // --------------------------------------------------
+            // SEARCH
+            // --------------------------------------------------
+
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search location',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: colors.surfaceContainerHighest,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
               ),
             ),
+
             const SizedBox(height: 24),
-            const Text(
+
+            // --------------------------------------------------
+            // NEARBY PARKING
+            // --------------------------------------------------
+
+            Text(
               'Nearby parking',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             const SizedBox(height: 12),
+
             Expanded(
               child: ListView.separated(
                 itemCount: lots.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                separatorBuilder: (_, _) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final lot = lots[index];
+
                   return ParkingCard(
                     lot: lot,
                     onTap: () => _openLot(lot),
@@ -154,6 +186,9 @@ class ParkingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -161,82 +196,110 @@ class ParkingCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Ink(
           decoration: BoxDecoration(
-            color: const Color(0xFFF7F7FC),
+            color: colors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.grey.shade200),
+            border: Border.all(
+              color: colors.outlineVariant,
+            ),
             boxShadow: [
               BoxShadow(
-
-                color: Colors.black.withValues(alpha: 0.08),
-                 blurRadius: 4,
+                color: colors.shadow.withValues(alpha: 0.10),
+                blurRadius: 6,
                 offset: const Offset(0, 2),
-               
               ),
             ],
           ),
+
           child: Padding(
             padding: const EdgeInsets.all(18),
+
             child: Row(
               children: [
+                // ------------------------------------------------
+                // PARKING ICON
+                // ------------------------------------------------
+
                 Container(
                   width: 58,
                   height: 58,
+
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: colors.surfaceContainerHighest,
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Center(
+
+                  child: Center(
                     child: Text(
                       'P',
                       style: TextStyle(
                         fontSize: 38,
                         fontWeight: FontWeight.bold,
+                        color: colors.primary,
                       ),
                     ),
                   ),
                 ),
+
                 const SizedBox(width: 16),
+
+                // ------------------------------------------------
+                // PARKING DETAILS
+                // ------------------------------------------------
+
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         lot.name,
-                        style: const TextStyle(
-                          fontSize: 17,
+                        style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+
                       const SizedBox(height: 7),
+
                       Text(
                         '${lot.distance} away',
-                        style: const TextStyle(fontSize: 15),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
                       ),
+
                       const SizedBox(height: 5),
+
                       Text(
                         '${lot.availableSlots} slots available',
-                        style: const TextStyle(
-                          fontSize: 15,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+
                       const SizedBox(height: 8),
-                      const Text(
+
+                      Text(
                         'View available slots →',
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
-                          color: Colors.blue,
+                          color: colors.primary,
                         ),
                       ),
                     ],
                   ),
                 ),
+
+                const SizedBox(width: 8),
+
+                // ------------------------------------------------
+                // PRICE
+                // ------------------------------------------------
+
                 Text(
                   lot.price,
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
+                    color: colors.primary,
                   ),
                 ),
               ],
@@ -269,134 +332,234 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+
     final lot = widget.lot;
     final availableCount = lot.availableSlots;
+
+    // Adaptive colors for slot states.
+    final availableBackground = Color.lerp(
+      colors.surface,
+      Colors.green,
+      0.14,
+    )!;
+
+    final availableBorder = Colors.green.shade600;
+
+    final occupiedBackground = colors.surfaceContainerHighest;
+    final occupiedBorder = colors.outline;
+
+    final selectedBackground = colors.primary;
+    final selectedBorder = colors.primary;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           lot.name,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
+
       body: Padding(
         padding: const EdgeInsets.all(16),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
-            const Text(
+            // --------------------------------------------------
+            // HEADER
+            // --------------------------------------------------
+
+            Text(
               'Choose your parking slot',
-              style: TextStyle(fontSize: 25, fontWeight: FontWeight.bold),
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
+
             const SizedBox(height: 8),
+
             Text(
               '$availableCount slots currently available',
-              style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: colors.onSurfaceVariant,
+              ),
             ),
+
             const SizedBox(height: 18),
+
+            // --------------------------------------------------
+            // PRICE
+            // --------------------------------------------------
+
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
+
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: colors.primary.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(16),
               ),
+
               child: Row(
                 children: [
-                  const Icon(Icons.currency_rupee, color: Colors.blue),
+                  Icon(
+                    Icons.currency_rupee,
+                    color: colors.primary,
+                  ),
+
                   const SizedBox(width: 8),
+
                   Text(
                     '${lot.price} per hour',
-                    style: const TextStyle(
-                      fontSize: 16,
+                    style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
+
+            // --------------------------------------------------
+            // LEGEND
+            // --------------------------------------------------
+
             Row(
-              children: const [
-                _LegendItem(color: Colors.green, text: 'Available'),
-                SizedBox(width: 18),
-                _LegendItem(color: Colors.grey, text: 'Occupied'),
-                SizedBox(width: 18),
-                _LegendItem(color: Colors.blue, text: 'Selected'),
+              children: [
+                _LegendItem(
+                  color: Colors.green.shade600,
+                  text: 'Available',
+                ),
+
+                const SizedBox(width: 18),
+
+                _LegendItem(
+                  color: colors.outline,
+                  text: 'Occupied',
+                ),
+
+                const SizedBox(width: 18),
+
+                _LegendItem(
+                  color: colors.primary,
+                  text: 'Selected',
+                ),
               ],
             ),
+
             const SizedBox(height: 20),
+
+            // --------------------------------------------------
+            // SLOTS
+            // --------------------------------------------------
+
             Expanded(
               child: GridView.builder(
                 itemCount: lot.totalSlots,
+
                 gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+                    const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 3,
                   crossAxisSpacing: 12,
                   mainAxisSpacing: 12,
                   childAspectRatio: 1.1,
                 ),
+
                 itemBuilder: (context, index) {
                   final slotNumber = index + 1;
-                  final isOccupied = lot.occupiedSlots.contains(slotNumber);
-                  final isSelected = selectedSlot == slotNumber;
+
+                  final isOccupied =
+                      lot.occupiedSlots.contains(slotNumber);
+
+                  final isSelected =
+                      selectedSlot == slotNumber;
+
+                  Color backgroundColor;
+                  Color borderColor;
+                  Color iconColor;
+                  Color textColor;
+
+                  if (isOccupied) {
+                    backgroundColor = occupiedBackground;
+                    borderColor = occupiedBorder;
+                    iconColor = colors.onSurfaceVariant;
+                    textColor = colors.onSurfaceVariant;
+                  } else if (isSelected) {
+                    backgroundColor = selectedBackground;
+                    borderColor = selectedBorder;
+                    iconColor = colors.onPrimary;
+                    textColor = colors.onPrimary;
+                  } else {
+                    backgroundColor = availableBackground;
+                    borderColor = availableBorder;
+                    iconColor = Colors.green.shade700;
+                    textColor = colors.onSurface;
+                  }
 
                   return GestureDetector(
                     onTap: isOccupied
                         ? null
                         : () {
-                      setState(() {
-                        selectedSlot = slotNumber;
-                      });
-                    },
-                    child: Container(
+                            setState(() {
+                              selectedSlot = slotNumber;
+                            });
+                          },
+
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+
                       decoration: BoxDecoration(
-                        color: isOccupied
-                            ? Colors.grey.shade300
-                            : isSelected
-                            ? Colors.blue
-                            : Colors.green.shade100,
+                        color: backgroundColor,
                         borderRadius: BorderRadius.circular(16),
+
                         border: Border.all(
-                          color: isOccupied
-                              ? Colors.grey.shade400
-                              : isSelected
-                              ? Colors.blue
-                              : Colors.green,
+                          color: borderColor,
                           width: 2,
                         ),
                       ),
+
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisAlignment:
+                            MainAxisAlignment.center,
+
                         children: [
                           Icon(
                             Icons.directions_car,
                             size: 30,
-                            color: isOccupied
-                                ? Colors.grey.shade600
-                                : isSelected
-                                ? Colors.white
-                                : Colors.green.shade700,
+                            color: iconColor,
                           ),
+
                           const SizedBox(height: 6),
+
                           Text(
                             'Slot $slotNumber',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
-                              color: isSelected ? Colors.white : Colors.black87,
+                              color: textColor,
                             ),
                           ),
+
                           const SizedBox(height: 3),
+
                           Text(
                             isOccupied
                                 ? 'Occupied'
                                 : isSelected
-                                ? 'Selected'
-                                : 'Available',
+                                    ? 'Selected'
+                                    : 'Available',
+
                             style: TextStyle(
                               fontSize: 12,
-                              color: isSelected ? Colors.white : Colors.black54,
+                              color: isSelected
+                                  ? colors.onPrimary
+                                  : colors.onSurfaceVariant,
                             ),
                           ),
                         ],
@@ -406,40 +569,67 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
                 },
               ),
             ),
+
             const SizedBox(height: 12),
+
+            // --------------------------------------------------
+            // SELECTED SLOT MESSAGE
+            // --------------------------------------------------
+
             if (selectedSlot != null)
               Container(
                 padding: const EdgeInsets.all(14),
+
                 decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
+                  color: colors.primary.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
+
                 child: Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.blue),
+                    Icon(
+                      Icons.check_circle,
+                      color: colors.primary,
+                    ),
+
                     const SizedBox(width: 10),
+
                     Expanded(
                       child: Text(
                         'Slot $selectedSlot selected',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
+
             const SizedBox(height: 12),
+
+            // --------------------------------------------------
+            // RESERVE BUTTON
+            // --------------------------------------------------
+
             SizedBox(
               width: double.infinity,
               height: 54,
+
               child: ElevatedButton(
                 onPressed: selectedSlot == null
                     ? null
                     : () => _showReservationDialog(lot),
+
                 child: Text(
                   selectedSlot == null
                       ? 'Select a Slot'
                       : 'Reserve Slot $selectedSlot',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
@@ -449,21 +639,29 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
     );
   }
 
+  // ==========================================================
+  // RESERVATION DIALOG
+  // ==========================================================
+
   void _showReservationDialog(ParkingLot lot) {
     showDialog(
       context: context,
+
       builder: (context) {
         return AlertDialog(
           title: const Text('Parking Reserved'),
+
           content: Text(
             'Slot $selectedSlot at ${lot.name} has been reserved.',
           ),
+
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context); // close dialog
-                Navigator.pop(context, selectedSlot); // go back to list, send reserved slot
+                Navigator.pop(context);
+                Navigator.pop(context, selectedSlot);
               },
+
               child: const Text('Done'),
             ),
           ],
@@ -493,13 +691,19 @@ class _LegendItem extends StatelessWidget {
         Container(
           width: 14,
           height: 14,
+
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4),
           ),
         ),
+
         const SizedBox(width: 5),
-        Text(text, style: const TextStyle(fontSize: 12)),
+
+        Text(
+          text,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
       ],
     );
   }
