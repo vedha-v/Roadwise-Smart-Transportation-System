@@ -1,4 +1,8 @@
+//parking page
 import 'package:flutter/material.dart';
+import '../../services/booking_service.dart';
+import '../../models/parking_booking.dart';
+
 
 // ============================================================
 // MODEL
@@ -62,9 +66,7 @@ class _ParkingPageState extends State<ParkingPage> {
   Future<void> _openLot(ParkingLot lot) async {
     final reservedSlot = await Navigator.push<int?>(
       context,
-      MaterialPageRoute(
-        builder: (context) => ParkingSlotsPage(lot: lot),
-      ),
+      MaterialPageRoute(builder: (context) => ParkingSlotsPage(lot: lot)),
     );
 
     if (reservedSlot != null) {
@@ -178,11 +180,7 @@ class ParkingCard extends StatelessWidget {
   final ParkingLot lot;
   final VoidCallback onTap;
 
-  const ParkingCard({
-    super.key,
-    required this.lot,
-    required this.onTap,
-  });
+  const ParkingCard({super.key, required this.lot, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -318,10 +316,7 @@ class ParkingCard extends StatelessWidget {
 class ParkingSlotsPage extends StatefulWidget {
   final ParkingLot lot;
 
-  const ParkingSlotsPage({
-    super.key,
-    required this.lot,
-  });
+  const ParkingSlotsPage({super.key, required this.lot});
 
   @override
   State<ParkingSlotsPage> createState() => _ParkingSlotsPageState();
@@ -638,6 +633,7 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
       ),
     );
   }
+  
 
   // ==========================================================
   // RESERVATION DIALOG
@@ -669,20 +665,30 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
       },
     );
   }
-}
 
-// ============================================================
-// LEGEND
-// ============================================================
+  Widget _ticketRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(title),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // LEGEND
+  // ============================================================
+}
 
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String text;
 
-  const _LegendItem({
-    required this.color,
-    required this.text,
-  });
+  const _LegendItem({required this.color, required this.text});
 
   @override
   Widget build(BuildContext context) {
