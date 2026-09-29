@@ -1,27 +1,58 @@
-//to maintain the theme of the whole app
 import 'package:flutter/material.dart';
 
 // Theme settings for the whole RoadWise app.
 class RoadWiseTheme {
+  static const Color _roadWiseGreen = Color(0xFF5F806B);
+  static const Color _roadWiseBackground = Color(0xFFF8F7F2);
+
   static ThemeData light() {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _roadWiseGreen,
+      brightness: Brightness.light,
+    );
+
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1565C0),
-        brightness: Brightness.light,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: _roadWiseBackground,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: _roadWiseBackground,
+        elevation: 0,
       ),
-      scaffoldBackgroundColor: const Color(0xFFF7F9FC),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: const Color(0xFFF0F0F8),
+        indicatorColor: _roadWiseGreen.withValues(alpha: 0.18),
+        iconTheme: WidgetStateProperty.resolveWith(
+          (states) {
+            if (states.contains(WidgetState.selected)) {
+              return const IconThemeData(
+                color: _roadWiseGreen,
+              );
+            }
+
+            return const IconThemeData(
+              color: Color(0xFF17201B),
+            );
+          },
+        ),
+      ),
     );
   }
 
   static ThemeData dark() {
+    final colorScheme = ColorScheme.fromSeed(
+      seedColor: _roadWiseGreen,
+      brightness: Brightness.dark,
+    );
+
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF1565C0),
-        brightness: Brightness.dark,
-      ),
+      colorScheme: colorScheme,
       scaffoldBackgroundColor: const Color(0xFF121212),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Color(0xFF121212),
+        elevation: 0,
+      ),
     );
   }
 }

@@ -1,29 +1,71 @@
-//parking page
-import 'package:flutter/material.dart';
-import '../../services/booking_service.dart';
-import '../../models/parking_booking.dart';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+
+import '../../services/booking_service.dart';
+
+// ============================================================
+// BACKEND CONFIGURATION
+// ============================================================
+
+// Android emulator -> host Mac
+const String _backendBaseUrl = 'http://10.0.2.2:3000/api';
 
 // ============================================================
 // MODEL
 // ============================================================
 
 class ParkingLot {
+  final int id;
   final String name;
+  final String location;
   final String distance;
   final int totalSlots;
+  final int backendAvailableSlots;
   final String price;
   final Set<int> occupiedSlots;
 
   ParkingLot({
+    required this.id,
     required this.name,
+    required this.location,
     required this.distance,
     required this.totalSlots,
+    required this.backendAvailableSlots,
     required this.price,
     required this.occupiedSlots,
   });
 
   int get availableSlots => totalSlots - occupiedSlots.length;
+
+  factory ParkingLot.fromJson(Map<String, dynamic> json) {
+    final totalSlots = (json['totalSlots'] as num).toInt();
+    final availableSlots = (json['availableSlots'] as num).toInt();
+
+    final occupiedCount =
+        (totalSlots - availableSlots).clamp(0, totalSlots);
+
+    // The current backend gives us the number of unavailable slots,
+    // but not their individual IDs.
+    //
+    // Until the backend exposes individual slot IDs, we represent
+    // those unavailable slots using the first N slot numbers.
+    final occupiedSlots = <int>{
+      for (int i = 1; i <= occupiedCount; i++) i,
+    };
+
+    return ParkingLot(
+      id: (json['id'] as num).toInt(),
+      name: json['name'] as String,
+      location: json['location'] as String,
+      distance: json['distance'] as String,
+      totalSlots: totalSlots,
+      backendAvailableSlots: availableSlots,
+      price: '₹${json['pricePerHour']}/hr',
+      occupiedSlots: occupiedSlots,
+    );
+  }
 }
 
 // ============================================================
@@ -38,35 +80,86 @@ class ParkingPage extends StatefulWidget {
 }
 
 class _ParkingPageState extends State<ParkingPage> {
-  // Single source of truth for all parking lots.
-  final List<ParkingLot> lots = [
-    ParkingLot(
-      name: 'City Centre Parking',
-      distance: '0.4 km',
-      totalSlots: 18,
-      price: '₹40/hr',
-      occupiedSlots: {3, 7, 12, 15},
-    ),
-    ParkingLot(
-      name: 'Metro Plaza Parking',
-      distance: '0.8 km',
-      totalSlots: 7,
-      price: '₹30/hr',
-      occupiedSlots: {2, 5},
-    ),
-    ParkingLot(
-      name: 'Central Mall Parking',
-      distance: '1.2 km',
-      totalSlots: 32,
-      price: '₹50/hr',
-      occupiedSlots: {1, 9, 20, 25, 30},
-    ),
-  ];
+  List<ParkingLot> lots = [];
+
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadParkingLots();
+  }
+
+  // ============================================================
+  // LOAD PARKING DATA FROM BACKEND
+  // ============================================================
+
+  Future<void> _loadParkingLots() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final client = HttpClient();
+
+      final request = await client.getUrl(
+        Uri.parse('$_backendBaseUrl/parking'),
+      );
+
+      final response = await request.close();
+
+      final responseBody = await response.transform(utf8.decoder).join();
+
+      client.close();
+
+      if (response.statusCode != 200) {
+        throw Exception(
+          'Backend returned status ${response.statusCode}',
+        );
+      }
+
+      final decoded = jsonDecode(responseBody) as Map<String, dynamic>;
+
+      final parkingData =
+          decoded['parkingSlots'] as List<dynamic>;
+
+      final loadedLots = parkingData
+          .map(
+            (item) => ParkingLot.fromJson(
+              item as Map<String, dynamic>,
+            ),
+          )
+          .toList();
+
+      if (!mounted) return;
+
+      setState(() {
+        lots = loadedLots;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+        _errorMessage =
+            'Could not connect to the RoadWise backend.';
+      });
+    }
+  }
+
+  // ============================================================
+  // OPEN PARKING LOT
+  // ============================================================
 
   Future<void> _openLot(ParkingLot lot) async {
     final reservedSlot = await Navigator.push<int?>(
       context,
-      MaterialPageRoute(builder: (context) => ParkingSlotsPage(lot: lot)),
+      MaterialPageRoute(
+        builder: (context) => ParkingSlotsPage(lot: lot),
+      ),
     );
 
     if (reservedSlot != null) {
@@ -75,6 +168,10 @@ class _ParkingPageState extends State<ParkingPage> {
       });
     }
   }
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -93,8 +190,10 @@ class _ParkingPageState extends State<ParkingPage> {
 
       body: Padding(
         padding: const EdgeInsets.all(16),
+
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+
           children: [
             // --------------------------------------------------
             // HEADER
@@ -151,22 +250,82 @@ class _ParkingPageState extends State<ParkingPage> {
             const SizedBox(height: 12),
 
             Expanded(
-              child: ListView.separated(
-                itemCount: lots.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final lot = lots[index];
-
-                  return ParkingCard(
-                    lot: lot,
-                    onTap: () => _openLot(lot),
-                  );
-                },
-              ),
+              child: _buildParkingContent(),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  // ============================================================
+  // PARKING CONTENT
+  // ============================================================
+
+  Widget _buildParkingContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_errorMessage != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.cloud_off_rounded,
+                size: 52,
+              ),
+
+              const SizedBox(height: 16),
+
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 16),
+
+              ElevatedButton.icon(
+                onPressed: _loadParkingLots,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (lots.isEmpty) {
+      return const Center(
+        child: Text('No parking locations available.'),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadParkingLots,
+
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+
+        itemCount: lots.length,
+
+        separatorBuilder: (_, _) =>
+            const SizedBox(height: 12),
+
+        itemBuilder: (context, index) {
+          final lot = lots[index];
+
+          return ParkingCard(
+            lot: lot,
+            onTap: () => _openLot(lot),
+          );
+        },
       ),
     );
   }
@@ -180,7 +339,11 @@ class ParkingCard extends StatelessWidget {
   final ParkingLot lot;
   final VoidCallback onTap;
 
-  const ParkingCard({super.key, required this.lot, required this.onTap});
+  const ParkingCard({
+    super.key,
+    required this.lot,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -189,16 +352,20 @@ class ParkingCard extends StatelessWidget {
 
     return Material(
       color: Colors.transparent,
+
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(18),
+
         child: Ink(
           decoration: BoxDecoration(
             color: colors.surfaceContainerLow,
             borderRadius: BorderRadius.circular(18),
+
             border: Border.all(
               color: colors.outlineVariant,
             ),
+
             boxShadow: [
               BoxShadow(
                 color: colors.shadow.withValues(alpha: 0.10),
@@ -246,20 +413,34 @@ class ParkingCard extends StatelessWidget {
 
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
+
                     children: [
                       Text(
                         lot.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
+                        style:
+                            theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
 
-                      const SizedBox(height: 7),
+                      const SizedBox(height: 5),
+
+                      Text(
+                        lot.location,
+                        style:
+                            theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+
+                      const SizedBox(height: 5),
 
                       Text(
                         '${lot.distance} away',
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style:
+                            theme.textTheme.bodyMedium?.copyWith(
                           color: colors.onSurfaceVariant,
                         ),
                       ),
@@ -268,7 +449,8 @@ class ParkingCard extends StatelessWidget {
 
                       Text(
                         '${lot.availableSlots} slots available',
-                        style: theme.textTheme.bodyMedium?.copyWith(
+                        style:
+                            theme.textTheme.bodyMedium?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -295,7 +477,8 @@ class ParkingCard extends StatelessWidget {
 
                 Text(
                   lot.price,
-                  style: theme.textTheme.bodyLarge?.copyWith(
+                  style:
+                      theme.textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: colors.primary,
                   ),
@@ -316,14 +499,23 @@ class ParkingCard extends StatelessWidget {
 class ParkingSlotsPage extends StatefulWidget {
   final ParkingLot lot;
 
-  const ParkingSlotsPage({super.key, required this.lot});
+  const ParkingSlotsPage({
+    super.key,
+    required this.lot,
+  });
 
   @override
-  State<ParkingSlotsPage> createState() => _ParkingSlotsPageState();
+  State<ParkingSlotsPage> createState() =>
+      _ParkingSlotsPageState();
 }
 
-class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
+class _ParkingSlotsPageState
+    extends State<ParkingSlotsPage> {
   int? selectedSlot;
+
+  // ============================================================
+  // BUILD
+  // ============================================================
 
   @override
   Widget build(BuildContext context) {
@@ -342,7 +534,9 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
 
     final availableBorder = Colors.green.shade600;
 
-    final occupiedBackground = colors.surfaceContainerHighest;
+    final occupiedBackground =
+        colors.surfaceContainerHighest;
+
     final occupiedBorder = colors.outline;
 
     final selectedBackground = colors.primary;
@@ -393,10 +587,13 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
 
             Container(
               width: double.infinity,
+
               padding: const EdgeInsets.all(16),
 
               decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.12),
+                color: colors.primary.withValues(
+                  alpha: 0.12,
+                ),
                 borderRadius: BorderRadius.circular(16),
               ),
 
@@ -411,7 +608,8 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
 
                   Text(
                     '${lot.price} per hour',
-                    style: theme.textTheme.titleMedium?.copyWith(
+                    style:
+                        theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -470,7 +668,9 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
                   final slotNumber = index + 1;
 
                   final isOccupied =
-                      lot.occupiedSlots.contains(slotNumber);
+                      lot.occupiedSlots.contains(
+                    slotNumber,
+                  );
 
                   final isSelected =
                       selectedSlot == slotNumber;
@@ -507,11 +707,13 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
                           },
 
                     child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
+                      duration:
+                          const Duration(milliseconds: 180),
 
                       decoration: BoxDecoration(
                         color: backgroundColor,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius:
+                            BorderRadius.circular(16),
 
                         border: Border.all(
                           color: borderColor,
@@ -576,7 +778,9 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
                 padding: const EdgeInsets.all(14),
 
                 decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.12),
+                  color: colors.primary.withValues(
+                    alpha: 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(14),
                 ),
 
@@ -633,62 +837,100 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
       ),
     );
   }
-  
 
   // ==========================================================
   // RESERVATION DIALOG
   // ==========================================================
 
-  void _showReservationDialog(ParkingLot lot) {
+    Future<void> _showReservationDialog(ParkingLot lot) async {
+    if (selectedSlot == null) return;
+
+    final slot = selectedSlot!;
+
     showDialog(
       context: context,
-
-      builder: (context) {
+      barrierDismissible: false,
+      builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Parking Reserved'),
-
+          title: const Text('Confirm Reservation'),
           content: Text(
-            'Slot $selectedSlot at ${lot.name} has been reserved.',
+            'Reserve Slot $slot at ${lot.name}?',
           ),
-
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context, selectedSlot);
+                Navigator.pop(dialogContext);
               },
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext);
 
-              child: const Text('Done'),
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) {
+                    return const Center(
+                      child: CircularProgressIndicator(),
+                    );
+                  },
+                );
+
+                final booking = await BookingService.createBooking(
+                  userId: 1,
+                  parkingName: lot.name,
+                  slot: 'Slot $slot',
+                  duration: 1,
+                  price: lot.price,
+                  distance: lot.distance,
+                );
+
+                if (!mounted) return;
+
+                Navigator.pop(context);
+
+                if (booking != null) {
+                  Navigator.pop(context, slot);
+
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Booking ${booking.bookingId} confirmed!',
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Could not create booking. Please try again.',
+                      ),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Confirm'),
             ),
           ],
         );
       },
     );
   }
-
-  Widget _ticketRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // LEGEND
-  // ============================================================
 }
+
+// ============================================================
+// LEGEND ITEM
+// ============================================================
 
 class _LegendItem extends StatelessWidget {
   final Color color;
   final String text;
 
-  const _LegendItem({required this.color, required this.text});
+  const _LegendItem({
+    required this.color,
+    required this.text,
+  });
 
   @override
   Widget build(BuildContext context) {
