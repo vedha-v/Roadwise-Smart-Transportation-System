@@ -1,4 +1,13 @@
 import { Module } from '@nestjs/common';
+import { ParkingController } from './parking.controller';
 
-@Module({})
+
+@Module({
+
+  controllers: [
+    ParkingController
+  ]
+
+})
+
 export class ParkingModule {}
