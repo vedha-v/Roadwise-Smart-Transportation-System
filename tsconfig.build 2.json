@@ -12,7 +12,7 @@
     "node_modules",
     "dist",
     "test",
-    "**/*.spec*.ts",
+    "**/*.spec.ts",
     "vitest.config.ts",
     "vitest.config.e2e.ts"
   ]

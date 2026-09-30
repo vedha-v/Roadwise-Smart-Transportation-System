@@ -1,37 +1,81 @@
-// booking page
 import 'package:flutter/material.dart';
+
 import '../../services/booking_service.dart';
-// import '../parking/parking_page.dart';
-class BookingsPage extends StatelessWidget {
+import '../../services/parking_api_service.dart';
+
+class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final bookings = BookingService.bookings;
+  State<BookingsPage> createState() => _BookingsPageState();
+}
 
+class _BookingsPageState extends State<BookingsPage> {
+  List<ParkingReservation> _bookings = [];
+  bool _loading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+  Future<void> _loadBookings() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final bookings = await BookingService.getBookings();
+      if (!mounted) return;
+      setState(() {
+        _bookings = bookings;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'My Bookings',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            onPressed: _loading ? null : _loadBookings,
+            tooltip: 'Refresh bookings',
+            icon: const Icon(Icons.refresh),
+          ),
+        ],
       ),
-      body: bookings.isEmpty
-          ? _EmptyBookings()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: bookings.length,
-              itemBuilder: (context, index) {
-                final booking = bookings[index];
-
-                return _BookingCard(
-                  parkingName: booking.parkingName,
-                  slot: booking.slot,
-                  price: booking.price,
-                  bookingId: booking.bookingId,
-                  distance: booking.distance,
-                );
-              },
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+          ? _MessageState(
+              message: 'Could not load reservations.\n$_error',
+              onRetry: _loadBookings,
+            )
+          : _bookings.isEmpty
+          ? const _EmptyBookings()
+          : RefreshIndicator(
+              onRefresh: _loadBookings,
+              child: ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _bookings.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 12),
+                itemBuilder: (context, index) =>
+                    _BookingCard(booking: _bookings[index]),
+              ),
             ),
     );
   }
@@ -46,29 +90,23 @@ class _EmptyBookings extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.confirmation_number_outlined,
-              size: 80,
+              size: 72,
               color: Colors.grey.shade400,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             const Text(
               'No bookings yet',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Your parking reservations will appear here.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -78,154 +116,55 @@ class _EmptyBookings extends StatelessWidget {
 }
 
 class _BookingCard extends StatelessWidget {
-  final String parkingName;
-  final String slot;
-  final String price;
-  final String bookingId;
-  final String distance;
+  final ParkingReservation booking;
 
-  const _BookingCard({
-    required this.parkingName,
-    required this.slot,
-    required this.price,
-    required this.bookingId,
-    required this.distance,
-  });
-  
+  const _BookingCard({required this.booking});
+
+  String _format(DateTime value) {
+    final local = value.toLocal();
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')} '
+        '${local.hour.toString().padLeft(2, '0')}:${local.minute.toString().padLeft(2, '0')}';
+  }
 
   @override
   Widget build(BuildContext context) {
+    final active = booking.status == 'confirmed';
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.local_parking,
-                    color: Colors.blue,
-                    size: 28,
-                  ),
-                ),
-
-                const SizedBox(width: 14),
-
+                const Icon(Icons.local_parking, size: 28),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        parkingName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$distance away',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
                   child: Text(
-                    'Confirmed',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    booking.parkingName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Chip(
+                  label: Text(
+                    booking.isDemo
+                        ? 'DEMO'
+                        : (active ? 'Confirmed' : booking.status),
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 18),
-
-            const Divider(),
-
-            const SizedBox(height: 12),
-
-            // Booking information
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoItem(
-                    icon: Icons.local_parking,
-                    label: 'Slot',
-                    value: slot,
-                  ),
-                ),
-                Expanded(
-                  child: _InfoItem(
-                    icon: Icons.currency_rupee,
-                    label: 'Price',
-                    value: price,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: 14),
-
-            _InfoItem(
-              icon: Icons.confirmation_number_outlined,
-              label: 'Booking ID',
-              value: bookingId,
-            ),
-
-            const SizedBox(height: 18),
-
-            // Actions
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.qr_code),
-                    label: const Text('QR Ticket'),
-                  ),
-                ),
-
-                const SizedBox(width: 10),
-
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {},
-                    icon: const Icon(Icons.navigation),
-                    label: const Text('Navigate'),
-                  ),
-                ),
-              ],
-            ),
+            const Divider(height: 24),
+            _InfoRow(label: 'Slot', value: booking.slot),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'From', value: _format(booking.startsAt)),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'Until', value: _format(booking.endsAt)),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'Booking ID', value: booking.bookingId),
           ],
         ),
       ),
@@ -233,51 +172,51 @@ class _BookingCard extends StatelessWidget {
   }
 }
 
-
-class _InfoItem extends StatelessWidget {
-  final IconData icon;
+class _InfoRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Colors.blue,
+        SizedBox(
+          width: 86,
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+        Expanded(child: Text(value)),
       ],
+    );
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+
+  const _MessageState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

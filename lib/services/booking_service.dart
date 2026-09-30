@@ -1,10 +1,9 @@
-//booking service
-import '../models/parking_booking.dart';
+import 'parking_api_service.dart';
 
 class BookingService {
-  static final List<ParkingBooking> bookings = [];
+  static final ParkingApiService _api = ParkingApiService();
 
-  static void addBooking(ParkingBooking booking) {
-    bookings.insert(0, booking);
+  static Future<List<ParkingReservation>> getBookings() {
+    return _api.getReservations();
   }
 }

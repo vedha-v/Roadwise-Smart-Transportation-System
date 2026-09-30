@@ -1,34 +1,6 @@
-//parking page
 import 'package:flutter/material.dart';
-import '../../services/booking_service.dart';
-import '../../models/parking_booking.dart';
 
-
-// ============================================================
-// MODEL
-// ============================================================
-
-class ParkingLot {
-  final String name;
-  final String distance;
-  final int totalSlots;
-  final String price;
-  final Set<int> occupiedSlots;
-
-  ParkingLot({
-    required this.name,
-    required this.distance,
-    required this.totalSlots,
-    required this.price,
-    required this.occupiedSlots,
-  });
-
-  int get availableSlots => totalSlots - occupiedSlots.length;
-}
-
-// ============================================================
-// PARKING PAGE
-// ============================================================
+import '../../services/parking_api_service.dart';
 
 class ParkingPage extends StatefulWidget {
   const ParkingPage({super.key});
@@ -38,679 +10,437 @@ class ParkingPage extends StatefulWidget {
 }
 
 class _ParkingPageState extends State<ParkingPage> {
-  // Single source of truth for all parking lots.
-  final List<ParkingLot> lots = [
-    ParkingLot(
-      name: 'City Centre Parking',
-      distance: '0.4 km',
-      totalSlots: 18,
-      price: '₹40/hr',
-      occupiedSlots: {3, 7, 12, 15},
-    ),
-    ParkingLot(
-      name: 'Metro Plaza Parking',
-      distance: '0.8 km',
-      totalSlots: 7,
-      price: '₹30/hr',
-      occupiedSlots: {2, 5},
-    ),
-    ParkingLot(
-      name: 'Central Mall Parking',
-      distance: '1.2 km',
-      totalSlots: 32,
-      price: '₹50/hr',
-      occupiedSlots: {1, 9, 20, 25, 30},
-    ),
-  ];
+  final ParkingApiService _api = ParkingApiService();
+  List<ParkingFacility> _facilities = [];
+  bool _loading = true;
+  String? _error;
+  DateTime _startsAt = DateTime.now().add(const Duration(hours: 1));
+  DateTime _endsAt = DateTime.now().add(const Duration(hours: 2));
 
-  Future<void> _openLot(ParkingLot lot) async {
-    final reservedSlot = await Navigator.push<int?>(
-      context,
-      MaterialPageRoute(builder: (context) => ParkingSlotsPage(lot: lot)),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadFacilities();
+  }
 
-    if (reservedSlot != null) {
+  Future<void> _loadFacilities() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final facilities = await _api.getNearbyParking();
+      if (!mounted) return;
       setState(() {
-        lot.occupiedSlots.add(reservedSlot);
+        _facilities = facilities;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _loading = false;
       });
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final colors = theme.colorScheme;
+  Future<void> _chooseTime(bool chooseStart) async {
+    final current = chooseStart ? _startsAt : _endsAt;
+    final date = await showDatePicker(
+      context: context,
+      initialDate: current.isBefore(DateTime.now()) ? DateTime.now() : current,
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+    );
+    if (date == null || !mounted) return;
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(current),
+    );
+    if (time == null) return;
+    final chosen = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    if (chooseStart) {
+      if (!chosen.isAfter(DateTime.now()) || !chosen.isBefore(_endsAt)) {
+        _showMessage(
+          'Start time must be in the future and before the end time.',
+        );
+        return;
+      }
+      setState(() => _startsAt = chosen);
+    } else {
+      if (!chosen.isAfter(_startsAt) ||
+          chosen.difference(_startsAt) > const Duration(hours: 24)) {
+        _showMessage('End time must be after start time and within 24 hours.');
+        return;
+      }
+      setState(() => _endsAt = chosen);
+    }
+  }
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Smart Parking',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // --------------------------------------------------
-            // HEADER
-            // --------------------------------------------------
-
-            Text(
-              'Find a parking spot',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              'Find available parking near your destination.',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // --------------------------------------------------
-            // SEARCH
-            // --------------------------------------------------
-
-            TextField(
-              decoration: InputDecoration(
-                hintText: 'Search location',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: colors.surfaceContainerHighest,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-
-            const SizedBox(height: 24),
-
-            // --------------------------------------------------
-            // NEARBY PARKING
-            // --------------------------------------------------
-
-            Text(
-              'Nearby parking',
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            Expanded(
-              child: ListView.separated(
-                itemCount: lots.length,
-                separatorBuilder: (_, _) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final lot = lots[index];
-
-                  return ParkingCard(
-                    lot: lot,
-                    onTap: () => _openLot(lot),
-                  );
-                },
-              ),
-            ),
-          ],
+  Future<void> _openFacility(ParkingFacility facility) async {
+    final reserved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ParkingSlotsPage(
+          facility: facility,
+          startsAt: _startsAt,
+          endsAt: _endsAt,
         ),
       ),
     );
+    if (reserved == true) await _loadFacilities();
   }
-}
 
-// ============================================================
-// PARKING CARD
-// ============================================================
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
 
-class ParkingCard extends StatelessWidget {
-  final ParkingLot lot;
-  final VoidCallback onTap;
-
-  const ParkingCard({super.key, required this.lot, required this.onTap});
+  String _formatDateTime(DateTime value) {
+    final local = value.toLocal();
+    final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+    final minute = local.minute.toString().padLeft(2, '0');
+    final period = local.hour < 12 ? 'AM' : 'PM';
+    return '${local.year}-${local.month.toString().padLeft(2, '0')}-${local.day.toString().padLeft(2, '0')}  $hour:$minute $period';
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: Ink(
-          decoration: BoxDecoration(
-            color: colors.surfaceContainerLow,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: colors.outlineVariant,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: colors.shadow.withValues(alpha: 0.10),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
-              ),
-            ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Parking near Delhi'),
+        actions: [
+          IconButton(
+            onPressed: _loading ? null : _loadFacilities,
+            tooltip: 'Refresh parking',
+            icon: const Icon(Icons.refresh),
           ),
-
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-
-            child: Row(
+        ],
+      ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ------------------------------------------------
-                // PARKING ICON
-                // ------------------------------------------------
-
-                Container(
-                  width: 58,
-                  height: 58,
-
-                  decoration: BoxDecoration(
-                    color: colors.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-
-                  child: Center(
-                    child: Text(
-                      'P',
-                      style: TextStyle(
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                        color: colors.primary,
+                Text(
+                  'Connaught Place, New Delhi',
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _chooseTime(true),
+                        icon: const Icon(Icons.login),
+                        label: Text(
+                          'From\n${_formatDateTime(_startsAt)}',
+                          textAlign: TextAlign.left,
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _chooseTime(false),
+                        icon: const Icon(Icons.logout),
+                        label: Text(
+                          'Until\n${_formatDateTime(_endsAt)}',
+                          textAlign: TextAlign.left,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(width: 16),
-
-                // ------------------------------------------------
-                // PARKING DETAILS
-                // ------------------------------------------------
-
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        lot.name,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-
-                      const SizedBox(height: 7),
-
-                      Text(
-                        '${lot.distance} away',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: colors.onSurfaceVariant,
-                        ),
-                      ),
-
-                      const SizedBox(height: 5),
-
-                      Text(
-                        '${lot.availableSlots} slots available',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      Text(
-                        'View available slots →',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: colors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                // ------------------------------------------------
-                // PRICE
-                // ------------------------------------------------
-
+                const SizedBox(height: 8),
                 Text(
-                  lot.price,
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: colors.primary,
-                  ),
+                  'Facility locations from OpenStreetMap. Bookable slots are listed only when verified by a facility or authorized provider.',
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
             ),
           ),
-        ),
+          Expanded(child: _buildFacilityList(theme)),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+            child: Text(
+              'Map data © OpenStreetMap contributors',
+              style: theme.textTheme.labelSmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFacilityList(ThemeData theme) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return _MessageState(
+        message: 'Could not load nearby parking.\n$_error',
+        onRetry: _loadFacilities,
+      );
+    }
+    if (_facilities.isEmpty) {
+      return _MessageState(
+        message: 'No parking facilities were found in the OpenStreetMap search area.',
+        onRetry: _loadFacilities,
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _loadFacilities,
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+        itemCount: _facilities.length,
+        separatorBuilder: (_, _) => const SizedBox(height: 10),
+        itemBuilder: (context, index) {
+          final facility = _facilities[index];
+          final hasSlots = facility.verifiedSlotCount > 0;
+          return Card(
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.local_parking)),
+              title: Text(
+                facility.name,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                '${facility.distanceKm.toStringAsFixed(1)} km away\n'
+                '${facility.isDemo ? 'DEMO ONLY - not a real parking facility\n' : ''}'
+                '${hasSlots ? '${facility.verifiedSlotCount} ${facility.isDemo ? 'sample' : 'verified'} slots' : 'No verified slot inventory'}',
+              ),
+              isThreeLine: true,
+              trailing: Icon(
+                hasSlots ? Icons.chevron_right : Icons.lock_outline,
+              ),
+              enabled: hasSlots,
+              onTap: hasSlots ? () => _openFacility(facility) : null,
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-// ============================================================
-// PARKING SLOTS PAGE
-// ============================================================
-
 class ParkingSlotsPage extends StatefulWidget {
-  final ParkingLot lot;
+  final ParkingFacility facility;
+  final DateTime startsAt;
+  final DateTime endsAt;
 
-  const ParkingSlotsPage({super.key, required this.lot});
+  const ParkingSlotsPage({
+    super.key,
+    required this.facility,
+    required this.startsAt,
+    required this.endsAt,
+  });
 
   @override
   State<ParkingSlotsPage> createState() => _ParkingSlotsPageState();
 }
 
 class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
-  int? selectedSlot;
+  final ParkingApiService _api = ParkingApiService();
+  List<ParkingSlot> _slots = [];
+  int? _selectedSlotId;
+  bool _loading = true;
+  bool _booking = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSlots();
+  }
+
+  Future<void> _loadSlots() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final slots = await _api.getAvailableSlots(
+        widget.facility,
+        widget.startsAt,
+        widget.endsAt,
+      );
+      if (!mounted) return;
+      setState(() {
+        _slots = slots;
+        _selectedSlotId = null;
+        _loading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _error = error.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _reserve() async {
+    final slotId = _selectedSlotId;
+    if (slotId == null) return;
+    setState(() => _booking = true);
+    try {
+      await _api.createReservation(slotId, widget.startsAt, widget.endsAt);
+      if (!mounted) return;
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _booking = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Reservation failed: $error')));
+      await _loadSlots();
+    }
+  }
+
+  String _time(DateTime value) => value.toLocal().toString().substring(0, 16);
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colors = theme.colorScheme;
-
-    final lot = widget.lot;
-    final availableCount = lot.availableSlots;
-
-    // Adaptive colors for slot states.
-    final availableBackground = Color.lerp(
-      colors.surface,
-      Colors.green,
-      0.14,
-    )!;
-
-    final availableBorder = Colors.green.shade600;
-
-    final occupiedBackground = colors.surfaceContainerHighest;
-    final occupiedBorder = colors.outline;
-
-    final selectedBackground = colors.primary;
-    final selectedBorder = colors.primary;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          lot.name,
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          widget.facility.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
         ),
       ),
-
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-
-          children: [
-            // --------------------------------------------------
-            // HEADER
-            // --------------------------------------------------
-
-            Text(
-              'Choose your parking slot',
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            Text(
-              '$availableCount slots currently available',
-              style: theme.textTheme.bodyLarge?.copyWith(
-                color: colors.onSurfaceVariant,
-              ),
-            ),
-
-            const SizedBox(height: 18),
-
-            // --------------------------------------------------
-            // PRICE
-            // --------------------------------------------------
-
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-
-              decoration: BoxDecoration(
-                color: colors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(16),
-              ),
-
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.currency_rupee,
-                    color: colors.primary,
-                  ),
-
-                  const SizedBox(width: 8),
-
-                  Text(
-                    '${lot.price} per hour',
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Select a verified slot',
+                  style: theme.textTheme.titleLarge,
+                ),
+                const SizedBox(height: 6),
+                Text('${_time(widget.startsAt)} to ${_time(widget.endsAt)}'),
+                if (widget.facility.isDemo) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'DEMO ONLY: this facility and its sample slots are fictional.',
+                    style: TextStyle(color: Colors.red),
                   ),
                 ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // --------------------------------------------------
-            // LEGEND
-            // --------------------------------------------------
-
-            Row(
-              children: [
-                _LegendItem(
-                  color: Colors.green.shade600,
-                  text: 'Available',
-                ),
-
-                const SizedBox(width: 18),
-
-                _LegendItem(
-                  color: colors.outline,
-                  text: 'Occupied',
-                ),
-
-                const SizedBox(width: 18),
-
-                _LegendItem(
-                  color: colors.primary,
-                  text: 'Selected',
+                const SizedBox(height: 4),
+                Text(
+                  'Availability is checked again when you reserve.',
+                  style: theme.textTheme.bodySmall,
                 ),
               ],
             ),
-
-            const SizedBox(height: 20),
-
-            // --------------------------------------------------
-            // SLOTS
-            // --------------------------------------------------
-
-            Expanded(
-              child: GridView.builder(
-                itemCount: lot.totalSlots,
-
-                gridDelegate:
-                    const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
-                  childAspectRatio: 1.1,
-                ),
-
-                itemBuilder: (context, index) {
-                  final slotNumber = index + 1;
-
-                  final isOccupied =
-                      lot.occupiedSlots.contains(slotNumber);
-
-                  final isSelected =
-                      selectedSlot == slotNumber;
-
-                  Color backgroundColor;
-                  Color borderColor;
-                  Color iconColor;
-                  Color textColor;
-
-                  if (isOccupied) {
-                    backgroundColor = occupiedBackground;
-                    borderColor = occupiedBorder;
-                    iconColor = colors.onSurfaceVariant;
-                    textColor = colors.onSurfaceVariant;
-                  } else if (isSelected) {
-                    backgroundColor = selectedBackground;
-                    borderColor = selectedBorder;
-                    iconColor = colors.onPrimary;
-                    textColor = colors.onPrimary;
-                  } else {
-                    backgroundColor = availableBackground;
-                    borderColor = availableBorder;
-                    iconColor = Colors.green.shade700;
-                    textColor = colors.onSurface;
-                  }
-
-                  return GestureDetector(
-                    onTap: isOccupied
-                        ? null
-                        : () {
-                            setState(() {
-                              selectedSlot = slotNumber;
-                            });
-                          },
-
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-
-                      decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(16),
-
-                        border: Border.all(
-                          color: borderColor,
-                          width: 2,
-                        ),
-                      ),
-
-                      child: Column(
-                        mainAxisAlignment:
-                            MainAxisAlignment.center,
-
-                        children: [
-                          Icon(
-                            Icons.directions_car,
-                            size: 30,
-                            color: iconColor,
-                          ),
-
-                          const SizedBox(height: 6),
-
-                          Text(
-                            'Slot $slotNumber',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: textColor,
-                            ),
-                          ),
-
-                          const SizedBox(height: 3),
-
-                          Text(
-                            isOccupied
-                                ? 'Occupied'
-                                : isSelected
-                                    ? 'Selected'
-                                    : 'Available',
-
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: isSelected
-                                  ? colors.onPrimary
-                                  : colors.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // --------------------------------------------------
-            // SELECTED SLOT MESSAGE
-            // --------------------------------------------------
-
-            if (selectedSlot != null)
-              Container(
-                padding: const EdgeInsets.all(14),
-
-                decoration: BoxDecoration(
-                  color: colors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.check_circle,
-                      color: colors.primary,
-                    ),
-
-                    const SizedBox(width: 10),
-
-                    Expanded(
-                      child: Text(
-                        'Slot $selectedSlot selected',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-            const SizedBox(height: 12),
-
-            // --------------------------------------------------
-            // RESERVE BUTTON
-            // --------------------------------------------------
-
-            SizedBox(
-              width: double.infinity,
-              height: 54,
-
-              child: ElevatedButton(
-                onPressed: selectedSlot == null
-                    ? null
-                    : () => _showReservationDialog(lot),
-
-                child: Text(
-                  selectedSlot == null
-                      ? 'Select a Slot'
-                      : 'Reserve Slot $selectedSlot',
-
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
+          Expanded(child: _buildSlots(theme)),
+        ],
+      ),
+      bottomNavigationBar: SafeArea(
+        minimum: const EdgeInsets.all(16),
+        child: FilledButton.icon(
+          onPressed: _selectedSlotId == null || _booking ? null : _reserve,
+          icon: _booking
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.event_available),
+          label: Text(_booking ? 'Reserving...' : 'Reserve selected slot'),
         ),
       ),
     );
   }
-  
 
-  // ==========================================================
-  // RESERVATION DIALOG
-  // ==========================================================
-
-  void _showReservationDialog(ParkingLot lot) {
-    showDialog(
-      context: context,
-
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Parking Reserved'),
-
-          content: Text(
-            'Slot $selectedSlot at ${lot.name} has been reserved.',
+  Widget _buildSlots(ThemeData theme) {
+    if (_loading) return const Center(child: CircularProgressIndicator());
+    if (_error != null) {
+      return _MessageState(
+        message: 'Could not load slots.\n$_error',
+        onRetry: _loadSlots,
+      );
+    }
+    if (_slots.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24),
+          child: Text('No verified slots are available for this time range.'),
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: _slots.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 1.1,
+      ),
+      itemBuilder: (context, index) {
+        final slot = _slots[index];
+        final selected = _selectedSlotId == slot.id;
+        return OutlinedButton(
+          onPressed: () => setState(() => _selectedSlotId = slot.id),
+          style: OutlinedButton.styleFrom(
+            backgroundColor: selected ? theme.colorScheme.primary : null,
+            foregroundColor: selected ? theme.colorScheme.onPrimary : null,
           ),
-
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context, selectedSlot);
-              },
-
-              child: const Text('Done'),
-            ),
-          ],
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.directions_car),
+              const SizedBox(height: 6),
+              Text(slot.slotCode),
+            ],
+          ),
         );
       },
     );
   }
-
-  Widget _ticketRow(String title, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(title),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ],
-      ),
-    );
-  }
-
-  // ============================================================
-  // LEGEND
-  // ============================================================
 }
 
-class _LegendItem extends StatelessWidget {
-  final Color color;
-  final String text;
+class _MessageState extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
 
-  const _LegendItem({required this.color, required this.text});
+  const _MessageState({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Container(
-          width: 14,
-          height: 14,
-
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
         ),
-
-        const SizedBox(width: 5),
-
-        Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-      ],
+      ),
     );
   }
 }

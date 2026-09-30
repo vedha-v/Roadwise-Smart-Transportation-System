@@ -1,5 +1,10 @@
 node_modules/
 dist/
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
 
 .env
 .env.*

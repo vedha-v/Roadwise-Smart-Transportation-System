@@ -1,15 +1,13 @@
 import { NestFactory } from '@nestjs/core';
 import {
   AppModule,
-  isObserveConfigured,
   ObserveInstrument,
 } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(
-    AppModule,
-    isObserveConfigured() ? { instrument: ObserveInstrument } : {},
-  );
+  const app = await NestFactory.create(AppModule, {
+    instrument: ObserveInstrument,
+  });
 
   app.enableCors({
     origin: true,
