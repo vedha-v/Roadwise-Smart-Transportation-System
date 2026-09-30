@@ -1,51 +1,44 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Post,
+} from '@nestjs/common';
+
+import { AuthService } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
-
- private users: any[] = [];
+  constructor(
+    private readonly authService: AuthService,
+  ) {}
 
   @Post('register')
-  register(@Body() userData: any) {
-
-    const newUser = {
-      id: this.users.length + 1,
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-    };
-
-    this.users.push(newUser);
-
-    return {
-      userId: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
-      message: 'User registered successfully',
-    };
+  async register(
+    @Body()
+    userData: {
+      name: string;
+      email: string;
+      password: string;
+    },
+  ) {
+    return this.authService.register(
+      userData.name,
+      userData.email,
+      userData.password,
+    );
   }
 
-
   @Post('login')
-  login(@Body() loginData: any) {
-
-    const user = this.users.find(
-      (u) =>
-        u.email === loginData.email &&
-        u.password === loginData.password,
+  async login(
+    @Body()
+    loginData: {
+      email: string;
+      password: string;
+    },
+  ) {
+    return this.authService.login(
+      loginData.email,
+      loginData.password,
     );
-
-    if (!user) {
-      return {
-        message: 'Invalid email or password',
-      };
-    }
-
-    return {
-      userId: user.id,
-      name: user.name,
-      email: user.email,
-      message: 'Login successful',
-    };
   }
 }

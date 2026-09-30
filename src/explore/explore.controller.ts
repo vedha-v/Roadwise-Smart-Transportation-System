@@ -5,26 +5,22 @@ import {
   Query,
 } from '@nestjs/common';
 
-import { EvService } from './ev.service';
+import { ExploreService } from './explore.service';
 
-@Controller('ev')
-export class EvController {
+@Controller('explore')
+export class ExploreController {
   constructor(
-    private readonly evService: EvService,
+    private readonly exploreService: ExploreService,
   ) {}
 
   @Get('nearby')
-  async getNearbyChargingStations(
+  async getNearbyLocations(
     @Query('lat') lat: string,
     @Query('lng') lng: string,
-    @Query('radius') radius?: string,
+    @Query('vehicle') vehicle: string,
   ) {
     const latitude = Number(lat);
     const longitude = Number(lng);
-
-    const searchRadius = radius
-      ? Number(radius)
-      : 1000;
 
     if (
       !Number.isFinite(latitude) ||
@@ -46,20 +42,16 @@ export class EvController {
       );
     }
 
-    if (
-      !Number.isFinite(searchRadius) ||
-      searchRadius <= 0 ||
-      searchRadius > 50000
-    ) {
+    if (!vehicle) {
       throw new BadRequestException(
-        'Radius must be between 1 and 50000 meters',
+        'Vehicle type is required',
       );
     }
 
-    return this.evService.getNearbyChargingStations(
+    return this.exploreService.getNearbyLocations(
       latitude,
       longitude,
-      searchRadius,
+      vehicle,
     );
   }
 }

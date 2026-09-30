@@ -1,80 +1,49 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+} from '@nestjs/common';
 
+import { BookingsService } from './bookings.service';
 
 @Controller('bookings')
 export class BookingsController {
 
-
-  private bookings = [
-
-    {
-      bookingId: "BK1001",
-      userId: 1,
-      parking: "City Parking",
-      slot: "A12",
-      duration: 2,
-      status: "Confirmed"
-    }
-
-  ];
-
-
+  constructor(
+    private readonly bookingsService: BookingsService,
+  ) {}
 
   @Get()
-  getBookings(){
-
-    return {
-
-      bookings: this.bookings,
-
-      message: "Bookings available"
-
-    };
-
+  getBookings() {
+    return this.bookingsService.getBookings();
   }
-
-
 
   @Post()
   createBooking(
-    @Body() bookingData:any
-  ){
-
-    const newBooking = {
-
-      bookingId:
-        "BK" + (1000 + this.bookings.length + 1),
-
-      userId:
-        bookingData.userId,
-
-      parking:
-        bookingData.parking,
-
-      slot:
-        bookingData.slot,
-
-      duration:
-        bookingData.duration,
-
-      status:
-        "Confirmed"
-
-    };
-
-
-    this.bookings.push(newBooking);
-
-
-    return {
-
-      booking:newBooking,
-
-      message:"Booking created successfully"
-
-    };
-
+    @Body() bookingData: any,
+  ) {
+    return this.bookingsService.createBooking(
+      bookingData,
+    );
   }
 
+  @Get(':bookingId')
+  getBookingById(
+    @Param('bookingId') bookingId: string,
+  ) {
+    return this.bookingsService.getBookingById(
+      bookingId,
+    );
+  }
 
+  @Post('scan')
+  scanBooking(
+    @Body() scanData: any,
+  ) {
+    return this.bookingsService.scanBooking(
+      scanData.bookingCode,
+    );
+  }
 }
