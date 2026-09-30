@@ -1,50 +1,73 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Post,
+  UnauthorizedException,
+} from '@nestjs/common';
+import { pool } from '../database/database';
 
 @Controller('auth')
 export class AuthController {
-
- private users: any[] = [];
-
   @Post('register')
-  register(@Body() userData: any) {
+  async register(@Body() userData: any) {
+    const existingUser = await pool.query(
+      'SELECT id FROM users WHERE email = $1',
+      [userData.email],
+    );
 
-    const newUser = {
-      id: this.users.length + 1,
-      name: userData.name,
-      email: userData.email,
-      password: userData.password,
-    };
+    if (existingUser.rows.length > 0) {
+      throw new ConflictException('Email already registered');
+    }
 
-    this.users.push(newUser);
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password)
+       VALUES ($1, $2, $3)
+       RETURNING id, name, email, role`,
+      [
+        userData.name,
+        userData.email,
+        userData.password,
+      ],
+    );
 
     return {
-      userId: newUser.id,
-      name: newUser.name,
-      email: newUser.email,
+      userId: result.rows[0].id,
+      name: result.rows[0].name,
+      email: result.rows[0].email,
+      role: result.rows[0].role,
       message: 'User registered successfully',
     };
   }
 
-
   @Post('login')
-  login(@Body() loginData: any) {
-
-    const user = this.users.find(
-      (u) =>
-        u.email === loginData.email &&
-        u.password === loginData.password,
+  async login(@Body() loginData: any) {
+    const result = await pool.query(
+      `SELECT id, name, email, password, role
+       FROM users
+       WHERE email = $1`,
+      [loginData.email],
     );
 
-    if (!user) {
-      return {
-        message: 'Invalid email or password',
-      };
+    if (result.rows.length === 0) {
+      throw new UnauthorizedException(
+        'Invalid email or password',
+      );
+    }
+
+    const user = result.rows[0];
+
+    if (user.password !== loginData.password) {
+      throw new UnauthorizedException(
+        'Invalid email or password',
+      );
     }
 
     return {
       userId: user.id,
       name: user.name,
       email: user.email,
+      role: user.role,
       message: 'Login successful',
     };
   }

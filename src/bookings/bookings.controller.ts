@@ -24,6 +24,56 @@ export class BookingsController {
     };
   }
 
+  @Get('user/:userId')
+  async getBookingsByUser(
+    @Param('userId') userId: string,
+  ) {
+    const result = await pool.query(
+      `SELECT * FROM bookings
+      WHERE user_id = $1
+      ORDER BY id DESC`,
+      [userId],
+    );
+
+    return {
+      bookings: result.rows,
+      message: 'User bookings available',
+    };
+  }
+
+  @Get(':bookingId/qr')
+  async getBookingQr(
+    @Param('bookingId') bookingId: string,
+  ) {
+    const result = await pool.query(
+      `SELECT
+        b.booking_id,
+        b.user_id,
+        u.name AS user_name,
+        b.parking,
+        b.slot,
+        b.duration,
+        b.status
+      FROM bookings b
+      LEFT JOIN users u
+        ON b.user_id = u.id
+      WHERE b.booking_id = $1`,
+      [bookingId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const booking = result.rows[0];
+
+    return {
+      qrData: booking.booking_id,
+      booking,
+      message: 'QR data generated successfully',
+    };
+  }
+
   @Get(':bookingId')
   async getBookingById(
     @Param('bookingId') bookingId: string,

@@ -1,21 +1,18 @@
 import { Controller, Get } from '@nestjs/common';
+import { pool } from '../database/database';
 
 @Controller('users')
 export class UsersController {
-
-  private users = [
-    {
-      id: 1,
-      name: 'Shreya',
-      email: 'shreya@gmail.com',
-      role: 'User',
-    },
-  ];
-
   @Get()
-  getUsers() {
+  async getUsers() {
+    const result = await pool.query(
+      `SELECT id, name, email, role
+       FROM users
+       ORDER BY id ASC`,
+    );
+
     return {
-      users: this.users,
+      users: result.rows,
       message: 'Users data available',
     };
   }
