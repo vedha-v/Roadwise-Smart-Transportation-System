@@ -24,6 +24,25 @@ export class BookingsController {
     };
   }
 
+  @Get(':bookingId')
+  async getBookingById(
+    @Param('bookingId') bookingId: string,
+  ) {
+    const result = await pool.query(
+      'SELECT * FROM bookings WHERE booking_id = $1',
+      [bookingId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    return {
+      booking: result.rows[0],
+      message: 'Booking found',
+    };
+  }
+
   @Post()
   async createBooking(@Body() bookingData: any) {
     const client = await pool.connect();
