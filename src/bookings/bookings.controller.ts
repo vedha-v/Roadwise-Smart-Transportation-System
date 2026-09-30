@@ -1,80 +1,43 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
-
+import { Body, Controller, Get, Post } from '@nestjs/common';
+import { pool } from '../database/database';
 
 @Controller('bookings')
 export class BookingsController {
-
-
-  private bookings = [
-
-    {
-      bookingId: "BK1001",
-      userId: 1,
-      parking: "City Parking",
-      slot: "A12",
-      duration: 2,
-      status: "Confirmed"
-    }
-
-  ];
-
-
-
   @Get()
-  getBookings(){
+  async getBookings() {
+    const result = await pool.query(
+      'SELECT * FROM bookings ORDER BY id DESC',
+    );
 
     return {
-
-      bookings: this.bookings,
-
-      message: "Bookings available"
-
+      bookings: result.rows,
+      message: 'Bookings available',
     };
-
   }
-
-
 
   @Post()
-  createBooking(
-    @Body() bookingData:any
-  ){
+  async createBooking(@Body() bookingData: any) {
+    const bookingId =
+      'BK' + Date.now();
 
-    const newBooking = {
-
-      bookingId:
-        "BK" + (1000 + this.bookings.length + 1),
-
-      userId:
+    const result = await pool.query(
+      `INSERT INTO bookings
+      (booking_id, user_id, parking, slot, duration, status)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING *`,
+      [
+        bookingId,
         bookingData.userId,
-
-      parking:
         bookingData.parking,
-
-      slot:
         bookingData.slot,
-
-      duration:
         bookingData.duration,
-
-      status:
-        "Confirmed"
-
-    };
-
-
-    this.bookings.push(newBooking);
-
+        'Confirmed',
+      ],
+    );
 
     return {
-
-      booking:newBooking,
-
-      message:"Booking created successfully"
-
+      booking: result.rows[0],
+      message: 'Booking created successfully',
     };
-
   }
-
-
 }
