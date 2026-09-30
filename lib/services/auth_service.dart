@@ -17,7 +17,6 @@ class AuthService {
     required String password,
   }) async {
     try {
-      // Try login first.
       final loginResponse = await http.post(
         Uri.parse('$_backendBaseUrl/auth/login'),
         headers: {
@@ -28,35 +27,10 @@ class AuthService {
           'password': password,
         }),
       );
+      
 
-      if (loginResponse.statusCode == 200) {
+      if (loginResponse.statusCode == 200 || loginResponse.statusCode == 201) {
         final data = jsonDecode(loginResponse.body);
-
-        if (data['userId'] != null) {
-          userId = data['userId'];
-          name = data['name']?.toString() ?? userName;
-          email = data['email']?.toString() ?? userEmail;
-
-          return true;
-        }
-      }
-
-      // If login fails, register the user.
-      final registerResponse = await http.post(
-        Uri.parse('$_backendBaseUrl/auth/register'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'name': userName,
-          'email': userEmail,
-          'password': password,
-        }),
-      );
-
-      if (registerResponse.statusCode == 200 ||
-          registerResponse.statusCode == 201) {
-        final data = jsonDecode(registerResponse.body);
 
         if (data['userId'] != null) {
           userId = data['userId'];
