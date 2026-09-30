@@ -1,28 +1,27 @@
 import { NestFactory } from '@nestjs/core';
-import {
-  AppModule,
-  ObserveInstrument,
-} from './app.module';
+
+import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
-    instrument: ObserveInstrument,
-  });
+
+  const app =
+    await NestFactory.create(
+      AppModule,
+    );
 
   app.enableCors({
     origin: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    methods:
+      'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
   app.setGlobalPrefix('api');
 
-  const port = process.env.PORT || 3000;
-
-  await app.listen(port);
+  await app.listen(3000);
 
   console.log(
-    `Roadwise Backend running on http://localhost:${port}`,
+    'Roadwise Backend running on http://localhost:3000',
   );
 }
 
