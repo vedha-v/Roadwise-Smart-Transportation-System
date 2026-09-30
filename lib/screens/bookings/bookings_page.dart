@@ -152,29 +152,23 @@ class _EmptyBookings extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.confirmation_number_outlined,
-              size: 80,
+              size: 72,
               color: Colors.grey.shade400,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 18),
             const Text(
               'No bookings yet',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Your parking reservations will appear here.',
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade600,
-              ),
+              style: TextStyle(color: Colors.grey.shade600),
             ),
           ],
         ),
@@ -184,11 +178,7 @@ class _EmptyBookings extends StatelessWidget {
 }
 
 class _BookingCard extends StatelessWidget {
-  final String parkingName;
-  final String slot;
-  final String price;
-  final String bookingId;
-  final String distance;
+  final ParkingReservation booking;
 
   const _BookingCard({
     required this.parkingName,
@@ -200,14 +190,11 @@ class _BookingCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final active = booking.status == 'confirmed';
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -258,12 +245,10 @@ class _BookingCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    'Confirmed',
-                    style: TextStyle(
-                      color: Colors.green.shade700,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
+                    booking.parkingName,
+                    style: Theme.of(context).textTheme.titleMedium,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -331,6 +316,14 @@ class _BookingCard extends StatelessWidget {
                 ),
               ],
             ),
+            const Divider(height: 24),
+            _InfoRow(label: 'Slot', value: booking.slot),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'From', value: _format(booking.startsAt)),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'Until', value: _format(booking.endsAt)),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'Booking ID', value: booking.bookingId),
           ],
         ),
       ),
@@ -343,45 +336,47 @@ class _InfoItem extends StatelessWidget {
   final String label;
   final String value;
 
-  const _InfoItem({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  const _InfoRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(
-          icon,
-          size: 20,
-          color: Colors.blue,
+        SizedBox(
+          width: 86,
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ),
+        Expanded(child: Text(value)),
       ],
+    );
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final String message;
+  final Future<void> Function() onRetry;
+
+  const _MessageState({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(message, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

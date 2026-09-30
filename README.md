@@ -31,6 +31,33 @@
 $ npm install
 ```
 
+## Parking reservations
+
+Parking facilities are discovered from OpenStreetMap through the Overpass API around Connaught Place, New Delhi (`28.6329, 77.2195`). OSM provides facility locations and map tags, not live parking capacity or booking availability. Only slot codes verified by a facility or authorized provider are bookable.
+
+For a reviewer walkthrough only, set `PARKING_DEMO_MODE=true` to show exactly one clearly labeled fictional facility with three sample slots. Keep this disabled in production; demo bookings are not real parking reservations.
+
+Configure the backend environment before starting it:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/roadwise
+DATABASE_SSL=false
+PARKING_ADMIN_TOKEN=replace-with-a-long-random-secret
+OBSERVE_APP_KEY=your-existing-observe-key
+OBSERVE_APP_SECRET=your-existing-observe-secret
+```
+
+The backend creates the parking tables on startup. Call `GET /api/parking` once to discover nearby OSM facilities. Then register only real, facility-verified slot codes with the admin token kept on the server:
+
+```bash
+curl -X POST http://localhost:3000/api/parking/inventory \
+  -H 'Content-Type: application/json' \
+  -H 'x-parking-admin-token: YOUR_SERVER_TOKEN' \
+  -d '{"osmType":"way","osmId":"OSM_OBJECT_ID","verifiedBy":"facility operator","slots":["A-01","A-02"]}'
+```
+
+Use the `osmType` and `osmId` returned by the OSM endpoint. The Flutter Android emulator defaults to `http://10.0.2.2:3000/api`; override it for another device/platform with `--dart-define=ROADWISE_API_URL=http://YOUR_HOST:3000/api`. A reservation is stored in PostgreSQL and checked transactionally for overlapping time ranges. The current client uses the shared `demo-user` identity; connect authenticated user identity before production use. Serve the production API over HTTPS and keep `PARKING_ADMIN_TOKEN` private.
+
 ## Compile and run the project
 
 ```bash

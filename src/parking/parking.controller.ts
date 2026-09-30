@@ -1,55 +1,46 @@
-import { Controller, Get } from '@nestjs/common';
-
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  UnauthorizedException,
+  Post,
+  Query,
+} from '@nestjs/common';
+import { ParkingService } from './parking.service';
 
 @Controller('parking')
 export class ParkingController {
-
+  constructor(private readonly parkingService: ParkingService) {}
 
   @Get()
-  getParking() {
-
-    return {
-
-      parkingSlots: [
-
-        {
-          id: 1,
-          name: "City Parking",
-          location: "MG Road",
-          availableSlots: 25,
-          totalSlots: 50,
-          pricePerHour: 50,
-          distance: "0.5 km"
-        },
-
-
-        {
-          id: 2,
-          name: "Central Mall Parking",
-          location: "Central Mall",
-          availableSlots: 10,
-          totalSlots: 30,
-          pricePerHour: 70,
-          distance: "1.2 km"
-        },
-
-
-        {
-          id: 3,
-          name: "Airport Parking",
-          location: "Airport Road",
-          availableSlots: 40,
-          totalSlots: 80,
-          pricePerHour: 100,
-          distance: "3 km"
-        }
-
-      ],
-
-      message: "Parking data available"
-
-    };
-
+  getNearbyParking(@Query('radius') radius?: string) {
+    const radiusMeters = radius === undefined ? 5000 : Number(radius);
+    if (!Number.isInteger(radiusMeters) || radiusMeters < 100 || radiusMeters > 30000) {
+      throw new BadRequestException('radius must be between 100 and 30000 meters');
+    }
+    return this.parkingService.getNearbyParking(radiusMeters);
   }
 
+  @Get('slots')
+  getAvailableSlots(
+    @Query('osmType') osmType: string,
+    @Query('osmId') osmId: string,
+    @Query('startsAt') startsAt: string,
+    @Query('endsAt') endsAt: string,
+  ) {
+    return this.parkingService.getAvailableSlots({ osmType, osmId, startsAt, endsAt });
+  }
+
+  @Post('inventory')
+  addVerifiedInventory(
+    @Body() body: { osmType?: string; osmId?: string; slots?: string[]; verifiedBy?: string },
+    @Headers('x-parking-admin-token') token: string,
+  ) {
+    if (!process.env.PARKING_ADMIN_TOKEN || token !== process.env.PARKING_ADMIN_TOKEN) {
+      throw new UnauthorizedException('A valid parking admin token is required');
+    }
+    return this.parkingService.addVerifiedInventory(body);
+  }
 }

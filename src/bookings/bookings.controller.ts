@@ -1,80 +1,22 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
-
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { ParkingService } from '../parking/parking.service';
 
 @Controller('bookings')
 export class BookingsController {
-
-
-  private bookings = [
-
-    {
-      bookingId: "BK1001",
-      userId: 1,
-      parking: "City Parking",
-      slot: "A12",
-      duration: 2,
-      status: "Confirmed"
-    }
-
-  ];
-
-
+  constructor(private readonly parkingService: ParkingService) {}
 
   @Get()
-  getBookings(){
-
-    return {
-
-      bookings: this.bookings,
-
-      message: "Bookings available"
-
-    };
-
+  getBookings(@Query('userId') userId?: string) {
+    return this.parkingService.getReservations(userId);
   }
-
-
 
   @Post()
-  createBooking(
-    @Body() bookingData:any
-  ){
-
-    const newBooking = {
-
-      bookingId:
-        "BK" + (1000 + this.bookings.length + 1),
-
-      userId:
-        bookingData.userId,
-
-      parking:
-        bookingData.parking,
-
-      slot:
-        bookingData.slot,
-
-      duration:
-        bookingData.duration,
-
-      status:
-        "Confirmed"
-
-    };
-
-
-    this.bookings.push(newBooking);
-
-
-    return {
-
-      booking:newBooking,
-
-      message:"Booking created successfully"
-
-    };
-
+  createBooking(@Body() bookingData: {
+    userId?: string;
+    slotId?: number;
+    startsAt?: string;
+    endsAt?: string;
+  }) {
+    return this.parkingService.createReservation(bookingData);
   }
-
-
 }

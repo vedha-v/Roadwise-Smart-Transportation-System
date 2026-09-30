@@ -14,28 +14,30 @@ import { RouteModule } from './route/route.module';
 export const { ObserveModule, ObserveInstrument } =
   createObserveModule();
 
-export const isObserveConfigured = () =>
-  Boolean(process.env.OBSERVE_APP_KEY && process.env.OBSERVE_APP_SECRET);
-
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
 
-    ...(isObserveConfigured()
-      ? [
-          ObserveModule.forRootAsync({
-            imports: [ConfigModule],
-            inject: [ConfigService],
-            useFactory: (config: ConfigService) => ({
-              appKey: config.getOrThrow<string>('OBSERVE_APP_KEY'),
-              appSecret: config.getOrThrow<string>('OBSERVE_APP_SECRET'),
-              serviceId: config.get<string>('SERVICE_ID', 'roadwise-backend'),
-            }),
-          }),
-        ]
-      : []),
+    ObserveModule.forRootAsync({
+      imports: [ConfigModule],
+
+      inject: [ConfigService],
+
+      useFactory: (config: ConfigService) => ({
+        appKey: config.getOrThrow<string>('OBSERVE_APP_KEY'),
+
+        appSecret: config.getOrThrow<string>(
+          'OBSERVE_APP_SECRET',
+        ),
+
+        serviceId: config.get<string>(
+          'SERVICE_ID',
+          'roadwise-backend',
+        ),
+      }),
+    }),
 
     AuthModule,
     UsersModule,

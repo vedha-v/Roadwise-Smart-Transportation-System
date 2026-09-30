@@ -5,7 +5,7 @@ import 'package:http/http.dart' as http;
 import '../models/parking_booking.dart';
 
 class BookingService {
-  static final List<ParkingBooking> bookings = [];
+  static final ParkingApiService _api = ParkingApiService();
 
   static const String _backendBaseUrl =
       'http://10.0.2.2:3000/api';
