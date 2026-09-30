@@ -3,6 +3,9 @@ import {
   ConflictException,
   Controller,
   Get,
+  NotFoundException,
+  Param,
+  Patch,
   Post,
 } from '@nestjs/common';
 import { pool } from '../database/database';
@@ -28,7 +31,6 @@ export class BookingsController {
     try {
       await client.query('BEGIN');
 
-      // Lock the parking row while we check/update availability
       const parkingResult = await client.query(
         'SELECT * FROM parking WHERE name = $1 FOR UPDATE',
         [bookingData.parking],
@@ -63,7 +65,6 @@ export class BookingsController {
         ],
       );
 
-      // Reduce available slots by 1
       await client.query(
         `UPDATE parking
          SET available_slots = available_slots - 1
@@ -80,13 +81,69 @@ export class BookingsController {
     } catch (error: any) {
       await client.query('ROLLBACK');
 
-      // PostgreSQL unique constraint violation
       if (error.code === '23505') {
         throw new ConflictException(
           'This parking slot is already booked',
         );
       }
 
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  @Patch(':bookingId/cancel')
+  async cancelBooking(
+    @Param('bookingId') bookingId: string,
+  ) {
+    const client = await pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const bookingResult = await client.query(
+        `SELECT * FROM bookings
+         WHERE booking_id = $1
+         FOR UPDATE`,
+        [bookingId],
+      );
+
+      if (bookingResult.rows.length === 0) {
+        throw new NotFoundException('Booking not found');
+      }
+
+      const booking = bookingResult.rows[0];
+
+      if (booking.status !== 'Confirmed') {
+        throw new ConflictException(
+          'This booking is already cancelled',
+        );
+      }
+
+      await client.query(
+        `UPDATE bookings
+         SET status = 'Cancelled'
+         WHERE booking_id = $1`,
+        [bookingId],
+      );
+
+      await client.query(
+        `UPDATE parking
+         SET available_slots = LEAST(total_slots, available_slots + 1)
+         WHERE name = $1`,
+        [booking.parking],
+      );
+
+      await client.query('COMMIT');
+
+      return {
+        bookingId,
+        status: 'Cancelled',
+        message: 'Booking cancelled successfully',
+      };
+    } catch (error) {
+      await client.query('ROLLBACK');
       throw error;
     } finally {
       client.release();
