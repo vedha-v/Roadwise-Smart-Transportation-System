@@ -1,38 +1,144 @@
-// booking page
 import 'package:flutter/material.dart';
+
+import '../../models/parking_booking.dart';
 import '../../services/booking_service.dart';
-// import '../parking/parking_page.dart';
-class BookingsPage extends StatelessWidget {
+
+class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final bookings = BookingService.bookings;
+  State<BookingsPage> createState() => _BookingsPageState();
+}
 
+class _BookingsPageState extends State<BookingsPage> {
+  List<ParkingBooking> _bookings = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBookings();
+  }
+
+  Future<void> _loadBookings() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final bookings = await BookingService.fetchBookings();
+
+    if (!mounted) return;
+
+    setState(() {
+      _bookings = bookings;
+      _isLoading = false;
+
+      if (bookings.isEmpty) {
+        _errorMessage = null;
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'My Bookings',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            onPressed: _isLoading ? null : _loadBookings,
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh bookings',
+          ),
+        ],
       ),
-      body: bookings.isEmpty
-          ? _EmptyBookings()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: bookings.length,
-              itemBuilder: (context, index) {
-                final booking = bookings[index];
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(),
+            )
+          : _errorMessage != null
+              ? _ErrorBookings(
+                  message: _errorMessage!,
+                  onRetry: _loadBookings,
+                )
+              : _bookings.isEmpty
+                  ? const _EmptyBookings()
+                  : RefreshIndicator(
+                      onRefresh: _loadBookings,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _bookings.length,
+                        itemBuilder: (context, index) {
+                          final booking = _bookings[index];
 
-                return _BookingCard(
-                  parkingName: booking.parkingName,
-                  slot: booking.slot,
-                  price: booking.price,
-                  bookingId: booking.bookingId,
-                  distance: booking.distance,
-                );
-              },
+                          return _BookingCard(
+                            parkingName: booking.parkingName,
+                            slot: booking.slot,
+                            price: booking.price,
+                            bookingId: booking.bookingId,
+                            distance: booking.distance,
+                          );
+                        },
+                      ),
+                    ),
+    );
+  }
+}
+
+class _ErrorBookings extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorBookings({
+    required this.message,
+    required this.onRetry,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.cloud_off_outlined,
+              size: 64,
+              color: Colors.grey.shade400,
             ),
+            const SizedBox(height: 20),
+            const Text(
+              'Could not load bookings',
+              style: TextStyle(
+                fontSize: 21,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -91,7 +197,6 @@ class _BookingCard extends StatelessWidget {
     required this.bookingId,
     required this.distance,
   });
-  
 
   @override
   Widget build(BuildContext context) {
@@ -106,7 +211,6 @@ class _BookingCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
             Row(
               children: [
                 Container(
@@ -122,9 +226,7 @@ class _BookingCard extends StatelessWidget {
                     size: 28,
                   ),
                 ),
-
                 const SizedBox(width: 14),
-
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,7 +248,6 @@ class _BookingCard extends StatelessWidget {
                     ],
                   ),
                 ),
-
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 10,
@@ -167,14 +268,9 @@ class _BookingCard extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 18),
-
             const Divider(),
-
             const SizedBox(height: 12),
-
-            // Booking information
             Row(
               children: [
                 Expanded(
@@ -193,33 +289,42 @@ class _BookingCard extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 14),
-
             _InfoItem(
               icon: Icons.confirmation_number_outlined,
               label: 'Booking ID',
               value: bookingId,
             ),
-
             const SizedBox(height: 18),
-
-            // Actions
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'QR ticket for $bookingId',
+                          ),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.qr_code),
                     label: const Text('QR Ticket'),
                   ),
                 ),
-
                 const SizedBox(width: 10),
-
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {},
+                    onPressed: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Navigation to $parkingName',
+                          ),
+                        ),
+                      );
+                    },
                     icon: const Icon(Icons.navigation),
                     label: const Text('Navigate'),
                   ),
@@ -232,7 +337,6 @@ class _BookingCard extends StatelessWidget {
     );
   }
 }
-
 
 class _InfoItem extends StatelessWidget {
   final IconData icon;
