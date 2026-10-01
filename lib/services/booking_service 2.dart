@@ -1,5 +1,5 @@
 //booking service
-import '../models/parking_booking.dart';
+import '../models/parking_booking 2.dart';
 
 class BookingService {
   static final List<ParkingBooking> bookings = [];

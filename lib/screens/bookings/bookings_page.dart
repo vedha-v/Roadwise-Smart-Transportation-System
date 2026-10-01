@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../models/parking_booking.dart';
 import '../../services/booking_service.dart';
+import '../../services/parking_api_service.dart';
 
 class BookingsPage extends StatefulWidget {
   const BookingsPage({super.key});
@@ -11,7 +11,7 @@ class BookingsPage extends StatefulWidget {
 }
 
 class _BookingsPageState extends State<BookingsPage> {
-  List<ParkingBooking> _bookings = [];
+  List<ParkingReservation> _bookings = [];
   bool _isLoading = true;
   String? _errorMessage;
 
@@ -26,29 +26,27 @@ class _BookingsPageState extends State<BookingsPage> {
       _isLoading = true;
       _errorMessage = null;
     });
-
-    final bookings = await BookingService.fetchBookings();
-
-    if (!mounted) return;
-
-    setState(() {
-      _bookings = bookings;
-      _isLoading = false;
-
-      if (bookings.isEmpty) {
-        _errorMessage = null;
-      }
-    });
+    try {
+      final bookings = await BookingService.fetchBookings();
+      if (!mounted) return;
+      setState(() {
+        _bookings = bookings;
+        _isLoading = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = error.toString();
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'My Bookings',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('My Bookings'),
         actions: [
           IconButton(
             onPressed: _isLoading ? null : _loadBookings,
@@ -58,87 +56,118 @@ class _BookingsPageState extends State<BookingsPage> {
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(),
-            )
+          ? const Center(child: CircularProgressIndicator())
           : _errorMessage != null
-              ? _ErrorBookings(
-                  message: _errorMessage!,
-                  onRetry: _loadBookings,
-                )
-              : _bookings.isEmpty
-                  ? const _EmptyBookings()
-                  : RefreshIndicator(
-                      onRefresh: _loadBookings,
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _bookings.length,
-                        itemBuilder: (context, index) {
-                          final booking = _bookings[index];
-
-                          return _BookingCard(
-                            parkingName: booking.parkingName,
-                            slot: booking.slot,
-                            price: booking.price,
-                            bookingId: booking.bookingId,
-                            distance: booking.distance,
-                          );
-                        },
-                      ),
-                    ),
+          ? _MessageState(
+              message: 'Could not load bookings.\n$_errorMessage',
+              onRetry: _loadBookings,
+            )
+          : _bookings.isEmpty
+          ? const _EmptyBookings()
+          : RefreshIndicator(
+              onRefresh: _loadBookings,
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: _bookings.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (context, index) =>
+                    _BookingCard(booking: _bookings[index]),
+              ),
+            ),
     );
   }
 }
 
-class _ErrorBookings extends StatelessWidget {
-  final String message;
-  final VoidCallback onRetry;
+class _BookingCard extends StatelessWidget {
+  final ParkingReservation booking;
 
-  const _ErrorBookings({
-    required this.message,
-    required this.onRetry,
-  });
+  const _BookingCard({required this.booking});
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    final theme = Theme.of(context);
+    final color = booking.status == 'confirmed'
+        ? theme.colorScheme.primary
+        : theme.colorScheme.onSurfaceVariant;
+    return Card(
+      margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(16),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Icon(
-              Icons.cloud_off_outlined,
-              size: 64,
-              color: Colors.grey.shade400,
+            Row(
+              children: [
+                Icon(Icons.local_parking, color: color),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    booking.parkingName,
+                    style: theme.textTheme.titleMedium,
+                  ),
+                ),
+                Text(
+                  booking.status,
+                  style: theme.textTheme.labelLarge?.copyWith(color: color),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            const Text(
-              'Could not load bookings',
-              style: TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
+            const Divider(height: 24),
+            _InfoRow(label: 'Space', value: booking.slot),
+            const SizedBox(height: 8),
+            _InfoRow(
+              label: 'From',
+              value: _formatDateTime(context, booking.startsAt),
             ),
             const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey.shade600,
+            _InfoRow(
+              label: 'Until',
+              value: _formatDateTime(context, booking.endsAt),
+            ),
+            const SizedBox(height: 8),
+            _InfoRow(label: 'Booking ID', value: booking.bookingId),
+            if (booking.isDemo) ...[
+              const SizedBox(height: 10),
+              Text(
+                'DEMO ONLY: this reservation uses sample inventory.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.error,
+                ),
               ),
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
+            ],
           ],
         ),
       ),
+    );
+  }
+}
+
+String _formatDateTime(BuildContext context, DateTime value) {
+  final local = value.toLocal();
+  final date = MaterialLocalizations.of(context).formatMediumDate(local);
+  final time = MaterialLocalizations.of(context)
+      .formatTimeOfDay(TimeOfDay.fromDateTime(local));
+  return '$date, $time';
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _InfoRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 82,
+          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
+        ),
+        Expanded(child: Text(value)),
+      ],
     );
   }
 }
@@ -156,199 +185,22 @@ class _EmptyBookings extends StatelessWidget {
           children: [
             Icon(
               Icons.confirmation_number_outlined,
-              size: 72,
-              color: Colors.grey.shade400,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(height: 18),
-            const Text(
-              'No bookings yet',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 16),
             Text(
+              'No bookings yet',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 6),
+            const Text(
               'Your parking reservations will appear here.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600),
             ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _BookingCard extends StatelessWidget {
-  final ParkingReservation booking;
-
-  const _BookingCard({
-    required this.parkingName,
-    required this.slot,
-    required this.price,
-    required this.bookingId,
-    required this.distance,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final active = booking.status == 'confirmed';
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(
-                    Icons.local_parking,
-                    color: Colors.blue,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        parkingName,
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '$distance away',
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    booking.parkingName,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            const Divider(),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _InfoItem(
-                    icon: Icons.local_parking,
-                    label: 'Slot',
-                    value: slot,
-                  ),
-                ),
-                Expanded(
-                  child: _InfoItem(
-                    icon: Icons.currency_rupee,
-                    label: 'Price',
-                    value: price,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _InfoItem(
-              icon: Icons.confirmation_number_outlined,
-              label: 'Booking ID',
-              value: bookingId,
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'QR ticket for $bookingId',
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.qr_code),
-                    label: const Text('QR Ticket'),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Navigation to $parkingName',
-                          ),
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.navigation),
-                    label: const Text('Navigate'),
-                  ),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            _InfoRow(label: 'Slot', value: booking.slot),
-            const SizedBox(height: 8),
-            _InfoRow(label: 'From', value: _format(booking.startsAt)),
-            const SizedBox(height: 8),
-            _InfoRow(label: 'Until', value: _format(booking.endsAt)),
-            const SizedBox(height: 8),
-            _InfoRow(label: 'Booking ID', value: booking.bookingId),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
-
-  const _InfoRow({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 86,
-          child: Text(label, style: Theme.of(context).textTheme.bodySmall),
-        ),
-        Expanded(child: Text(value)),
-      ],
     );
   }
 }
