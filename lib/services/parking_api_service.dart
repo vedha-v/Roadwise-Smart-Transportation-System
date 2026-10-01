@@ -2,10 +2,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-const _apiBaseUrl = String.fromEnvironment(
-  'ROADWISE_API_URL',
-  defaultValue: 'http://10.0.2.2:3000/api',
-);
+import 'api_config.dart';
 
 class ParkingFacility {
   final String osmType;
@@ -137,11 +134,11 @@ class ParkingApiService {
     late final http.Response response;
     try {
       response = await http
-          .get(Uri.parse('$_apiBaseUrl$path'))
+          .get(Uri.parse('$roadwiseApiBaseUrl$path'))
           .timeout(const Duration(seconds: 25));
     } on Exception catch (error) {
       throw Exception(
-        'Cannot reach the RoadWise backend at $_apiBaseUrl. '
+        'Cannot reach the RoadWise backend at $roadwiseApiBaseUrl. '
         'Start the NestJS server and PostgreSQL. Details: $error',
       );
     }
@@ -153,7 +150,7 @@ class ParkingApiService {
     String path,
     Map<String, dynamic> body,
   ) async {
-    final uri = Uri.parse('$_apiBaseUrl$path');
+    final uri = Uri.parse('$roadwiseApiBaseUrl$path');
     final response = method == 'POST'
         ? await http.post(
             uri,

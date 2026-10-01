@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../services/auth_service.dart';
-
 class ProfilePage extends StatefulWidget {
   final VoidCallback onLogout;
   final ThemeMode themeMode;
@@ -20,9 +18,9 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   // Local profile data for now.
-  // We will connect this to the backend later.
-  String _name = AuthService.name ?? 'RoadWise user';
-  String _email = AuthService.email ?? 'user@roadwise.com';
+  // We are intentionally keeping this pre-auth to avoid blocking exploration.
+  String _name = 'RoadWise user';
+  String _email = 'user@roadwise.com';
   String _phone = '+91 00000 00000';
 
   bool _notificationsEnabled = true;

@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
 import 'theme.dart';
-import '../services/auth_service.dart';
-import '../screens/auth/login_page.dart';
 import '../screens/home/home_page.dart';
 import '../screens/explore/explore_page.dart';
 import '../screens/bookings/bookings_page.dart';
@@ -17,25 +15,10 @@ class RoadWiseApp extends StatefulWidget {
 
 class _RoadWiseAppState extends State<RoadWiseApp> {
   ThemeMode _themeMode = ThemeMode.system;
-  bool _isLoggedIn = false;
 
   void _changeThemeMode(ThemeMode mode) {
     setState(() {
       _themeMode = mode;
-    });
-  }
-
-  void _handleLogin() {
-    setState(() {
-      _isLoggedIn = true;
-    });
-  }
-
-  void _handleLogout() {
-    AuthService.logout();
-
-    setState(() {
-      _isLoggedIn = false;
     });
   }
 
@@ -47,15 +30,11 @@ class _RoadWiseAppState extends State<RoadWiseApp> {
       theme: RoadWiseTheme.light(),
       darkTheme: RoadWiseTheme.dark(),
       themeMode: _themeMode,
-      home: _isLoggedIn
-          ? MainShell(
-              themeMode: _themeMode,
-              onThemeModeChanged: _changeThemeMode,
-              onLogout: _handleLogout,
-            )
-          : LoginPage(
-              onLoggedIn: _handleLogin,
-            ),
+      home: MainShell(
+        themeMode: _themeMode,
+        onThemeModeChanged: _changeThemeMode,
+        onLogout: () {},
+      ),
     );
   }
 }
@@ -77,7 +56,7 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  int _currentIndex = 1;
 
   List<Widget> get _pages => [
         const HomePage(),

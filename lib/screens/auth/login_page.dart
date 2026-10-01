@@ -5,23 +5,17 @@ import '../../services/auth_service.dart';
 class LoginPage extends StatefulWidget {
   final VoidCallback onLoggedIn;
 
-  const LoginPage({
-    super.key,
-    required this.onLoggedIn,
-  });
+  const LoginPage({super.key, required this.onLoggedIn});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _nameController =
-    TextEditingController(text: 'RoadWise User');
+  final _nameController = TextEditingController(text: 'RoadWise User');
 
-final _emailController =
-    TextEditingController(text: 'demo@roadwise.com');
-  final _passwordController =
-      TextEditingController(text: 'roadwise123');
+  final _emailController = TextEditingController(text: 'demo@roadwise.com');
+  final _passwordController = TextEditingController(text: 'roadwise123');
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -41,9 +35,7 @@ final _emailController =
 
     if (name.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all the fields.'),
-        ),
+        const SnackBar(content: Text('Please fill in all the fields.')),
       );
       return;
     }
@@ -52,7 +44,7 @@ final _emailController =
       _isLoading = true;
     });
 
-    final success = await AuthService.loginOrRegister(
+    final result = await AuthService.loginOrRegister(
       userName: name,
       userEmail: email,
       password: password,
@@ -64,65 +56,68 @@ final _emailController =
       _isLoading = false;
     });
 
-    if (success) {
+    if (result.success) {
       widget.onLoggedIn();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Could not connect to RoadWise. Please make sure the backend is running.',
-          ),
-        ),
+        SnackBar(content: Text(result.message ?? 'Login failed.')),
       );
     }
   }
 
+  void _continueInDemoMode() {
+    AuthService.continueInDemoMode(
+      userName: _nameController.text,
+      userEmail: _emailController.text,
+    );
+    widget.onLoggedIn();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     return Scaffold(
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 28,
-              vertical: 32,
-            ),
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Container(
-                  width: 76,
-                  height: 76,
+                  width: double.infinity,
+                  height: 104,
                   decoration: BoxDecoration(
                     color: const Color(0xFFDCEBE3),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(28),
                   ),
                   child: const Icon(
                     Icons.directions_car_rounded,
-                    size: 40,
+                    size: 48,
                     color: Color(0xFF17201B),
                   ),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
                 Text(
                   'Welcome to RoadWise',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: theme.textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Your smart transportation companion.',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: colors.onSurfaceVariant,
-                      ),
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: colors.onSurfaceVariant,
+                  ),
                 ),
-                const SizedBox(height: 36),
+                const SizedBox(height: 28),
                 TextField(
                   controller: _nameController,
                   textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.name],
                   decoration: const InputDecoration(
                     labelText: 'Name',
                     prefixIcon: Icon(Icons.person_outline),
@@ -133,6 +128,7 @@ final _emailController =
                   controller: _emailController,
                   keyboardType: TextInputType.emailAddress,
                   textInputAction: TextInputAction.next,
+                  autofillHints: const [AutofillHints.email],
                   decoration: const InputDecoration(
                     labelText: 'Email',
                     prefixIcon: Icon(Icons.email_outlined),
@@ -142,6 +138,7 @@ final _emailController =
                 TextField(
                   controller: _passwordController,
                   obscureText: _obscurePassword,
+                  autofillHints: const [AutofillHints.password],
                   onSubmitted: (_) => _login(),
                   decoration: InputDecoration(
                     labelText: 'Password',
@@ -169,9 +166,7 @@ final _emailController =
                         ? const SizedBox(
                             width: 22,
                             height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2.5,
-                            ),
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
                           )
                         : const Text(
                             'Continue',
@@ -182,7 +177,16 @@ final _emailController =
                           ),
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 52,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _continueInDemoMode,
+                    icon: const Icon(Icons.explore_outlined),
+                    label: const Text('Continue in demo mode'),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -202,14 +206,11 @@ final _emailController =
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'Demo account details are already filled in. '
-                          'Just tap Continue to enter RoadWise.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyMedium
-                              ?.copyWith(
-                                color: colors.onSurfaceVariant,
-                              ),
+                          'Continue connects to the RoadWise backend. '
+                          'Demo mode opens the app without creating a server account.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: colors.onSurfaceVariant,
+                          ),
                         ),
                       ),
                     ],
