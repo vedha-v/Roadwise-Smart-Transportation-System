@@ -42,10 +42,13 @@ Configure the backend environment before starting it:
 ```env
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/roadwise
 DATABASE_SSL=false
+TOMTOM_API_KEY=replace-with-your-tomtom-traffic-api-key
 PARKING_ADMIN_TOKEN=replace-with-a-long-random-secret
 OBSERVE_APP_KEY=your-existing-observe-key
 OBSERVE_APP_SECRET=your-existing-observe-secret
 ```
+
+The Traffic screen loads TomTom Flow Segment Data and current Incident Details through the backend. Keep `TOMTOM_API_KEY` server-side; the backend creates `traffic_snapshots` in PostgreSQL and returns the last saved reading for a nearby location if TomTom is temporarily unavailable. `GET /api/traffic` defaults to the Delhi area; pass `latitude`, `longitude`, and an optional `radius` (500-10000 meters) to query another area. No sample traffic is returned when neither TomTom nor a saved snapshot is available.
 
 The backend creates the parking tables on startup. Call `GET /api/parking` once to discover nearby OSM facilities. Then register only real, facility-verified slot codes with the admin token kept on the server:
 
