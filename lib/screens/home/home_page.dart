@@ -1,7 +1,10 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
+
 import '../../screens/parking/parking_page.dart';
 import '../../screens/ev/ev_page.dart';
+import '../../screens/traffic/traffic_page.dart';
 
 /// RoadWise palette — blue grain-gradient backdrop + frosted glass cards,
 /// styled after the fintech-app reference (dark glass cards, warm gradient
@@ -45,10 +48,7 @@ class HomePage extends StatelessWidget {
           //     assets:
           //       - assets/images/home_bg.jpg
           Positioned.fill(
-            child: Image.asset(
-              'assets/images/home_bg.jpg',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/images/home_bg.jpg', fit: BoxFit.cover),
           ),
           // Subtle scrim for text legibility.
           Positioned.fill(
@@ -89,8 +89,10 @@ class HomePage extends StatelessWidget {
                       ),
                       _GlassCircle(
                         size: 44,
-                        child: const Icon(Icons.person_outline,
-                            color: _RWColors.iconOrange),
+                        child: const Icon(
+                          Icons.person_outline,
+                          color: _RWColors.iconOrange,
+                        ),
                       ),
                     ],
                   ),
@@ -106,63 +108,78 @@ class HomePage extends StatelessWidget {
                       decoration: InputDecoration(
                         hintText: 'Where do you want to go?',
                         hintStyle: const TextStyle(color: _RWColors.textMuted),
-                        prefixIcon: const Icon(Icons.search,
-                            color: _RWColors.iconOrange),
-                        suffixIcon: const Icon(Icons.mic_none,
-                            color: _RWColors.iconOrangeLight),
+                        prefixIcon: const Icon(
+                          Icons.search,
+                          color: _RWColors.iconOrange,
+                        ),
+                        suffixIcon: const Icon(
+                          Icons.mic_none,
+                          color: _RWColors.iconOrangeLight,
+                        ),
                         border: InputBorder.none,
-                        contentPadding:
-                        const EdgeInsets.symmetric(vertical: 16),
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 16,
+                        ),
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 22),
 
-                  // Hero card — headline traffic status + sparkline,
-                  // echoing the reference app's gradient balance card.
-                                   // Hero card — headline traffic status + sparkline,
-                  // echoing the reference app's gradient balance card.
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TrafficPage(),
+                          ),
+                        );
+                      },
                       borderRadius: BorderRadius.circular(26),
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: _RWColors.heroGradient,
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(22),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(26),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: _RWColors.heroGradient,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFFF7A59)
+                                  .withValues(alpha: 0.35),
+                              blurRadius: 24,
+                              offset: const Offset(0, 12),
+                            ),
+                          ],
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Traffic status',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              'Open Traffic',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 30,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFFF7A59)
-                              .withValues(alpha: 0.35),
-                          blurRadius: 24,
-                          offset: const Offset(0, 12),
-                        ),
-                      ],
-                    ),
-                    child: const Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Traffic status',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Moderate',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 30,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ],
                     ),
                   ),
 
@@ -201,6 +218,14 @@ class HomePage extends StatelessWidget {
                       _QuickActionIcon(
                         icon: Icons.traffic,
                         label: 'Traffic',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const TrafficPage(),
+                            ),
+                          );
+                        },
                       ),
                       _QuickActionIcon(
                         icon: Icons.local_shipping,
@@ -223,7 +248,7 @@ class HomePage extends StatelessWidget {
                         _StatusRow(
                           icon: Icons.traffic,
                           title: 'Traffic',
-                          value: 'Moderate',
+                          value: 'Open map',
                           badgeColor: _RWColors.traffic,
                         ),
                         _RWDivider(),
@@ -275,7 +300,7 @@ class HomePage extends StatelessWidget {
                               ),
                               SizedBox(height: 6),
                               Text(
-                                'Traffic is moderate. Consider checking parking availability before starting your journey.',
+                                'Plan for busy streets and changing road conditions.',
                                 style: TextStyle(
                                   color: _RWColors.textSecondary,
                                   height: 1.35,
@@ -295,7 +320,6 @@ class HomePage extends StatelessWidget {
           ),
         ],
       ),
-     
     );
   }
 }
@@ -380,11 +404,7 @@ class _QuickActionIcon extends StatelessWidget {
   final String label;
   final VoidCallback? onTap;
 
-  const _QuickActionIcon({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _QuickActionIcon({required this.icon, required this.label, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -476,5 +496,3 @@ class _RWDivider extends StatelessWidget {
 
 /// Purely decorative bottom bar — no new routes wired up, matches the
 /// reference app's minimal icon nav.
-
-
