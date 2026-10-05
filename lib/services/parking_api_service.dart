@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 import 'api_config.dart';
 
@@ -8,6 +9,7 @@ class ParkingFacility {
   final String osmType;
   final String osmId;
   final String name;
+  final LatLng location;
   final double distanceKm;
   final int verifiedSlotCount;
   final bool isDemo;
@@ -16,6 +18,7 @@ class ParkingFacility {
     required this.osmType,
     required this.osmId,
     required this.name,
+    required this.location,
     required this.distanceKm,
     required this.verifiedSlotCount,
     required this.isDemo,
@@ -26,6 +29,10 @@ class ParkingFacility {
       osmType: json['osmType'] as String,
       osmId: json['osmId'].toString(),
       name: json['name'] as String,
+      location: LatLng(
+        (json['latitude'] as num).toDouble(),
+        (json['longitude'] as num).toDouble(),
+      ),
       distanceKm: (json['distanceKm'] as num).toDouble(),
       verifiedSlotCount: json['verifiedSlotCount'] as int,
       isDemo: json['isDemo'] == true,

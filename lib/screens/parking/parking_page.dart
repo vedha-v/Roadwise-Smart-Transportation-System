@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:latlong2/latlong.dart';
 
 import '../../services/booking_service.dart';
 import '../../services/parking_api_service.dart';
@@ -173,6 +176,9 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
   bool _isLoading = true;
   bool _isReserving = false;
   String? _errorMessage;
+  LatLng? _currentLocation;
+  String? _locationMessage;
+  bool _isLoadingLocation = true;
 
   bool get _hasValidInterval =>
       _startsAt.isAfter(DateTime.now()) &&
@@ -185,6 +191,75 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
     _startsAt = DateTime.now().add(const Duration(hours: 1));
     _endsAt = _startsAt.add(const Duration(hours: 1));
     _loadSlots();
+    _loadCurrentLocation();
+  }
+
+  Future<void> _loadCurrentLocation() async {
+    setState(() {
+      _isLoadingLocation = true;
+      _locationMessage = null;
+    });
+
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw Exception('Location services are turned off.');
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied) {
+        throw Exception('Location permission was denied.');
+      }
+      if (permission == LocationPermission.deniedForever) {
+        throw Exception(
+          'Location permission is disabled. Enable it in app settings to show your position.',
+        );
+      }
+
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          timeLimit: Duration(seconds: 15),
+        ),
+      );
+      if (!mounted) return;
+      setState(() {
+        _currentLocation = LatLng(position.latitude, position.longitude);
+        _isLoadingLocation = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _locationMessage = error.toString().replaceFirst('Exception: ', '');
+        _isLoadingLocation = false;
+      });
+    }
+  }
+
+  Future<void> _handleLocationAction() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      final opened = await Geolocator.openLocationSettings();
+      if (!opened && mounted) {
+        setState(() {
+          _locationMessage = 'Could not open location settings.';
+        });
+      }
+      return;
+    }
+
+    if (await Geolocator.checkPermission() ==
+        LocationPermission.deniedForever) {
+      final opened = await Geolocator.openAppSettings();
+      if (!opened && mounted) {
+        setState(() {
+          _locationMessage = 'Could not open app settings.';
+        });
+      }
+      return;
+    }
+
+    await _loadCurrentLocation();
   }
 
   Future<void> _loadSlots() async {
@@ -303,9 +378,25 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
             Text('Choose a parking space', style: theme.textTheme.titleLarge),
             const SizedBox(height: 4),
             Text(
-              '${widget.facility.distanceKm.toStringAsFixed(1)} km away'
+              '${_currentLocation != null
+                  ? '${_distanceToFacilityKm.toStringAsFixed(1)} km away'
+                  : _isLoadingLocation
+                  ? 'Finding your distance…'
+                  : '${widget.facility.distanceKm.toStringAsFixed(1)} km from search area'}'
               '${widget.facility.isDemo ? ' · DEMO ONLY' : ''}',
               style: theme.textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 14),
+            _ParkingRouteMap(
+              currentLocation: _currentLocation,
+              parkingLocation: widget.facility.location,
+              facilityName: widget.facility.name,
+              distanceKm: _currentLocation == null
+                  ? null
+                  : _distanceToFacilityKm,
+              isLoadingLocation: _isLoadingLocation,
+              locationMessage: _locationMessage,
+              onRetryLocation: _handleLocationAction,
             ),
             const SizedBox(height: 16),
             Row(
@@ -361,6 +452,18 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
     );
   }
 
+  double get _distanceToFacilityKm {
+    final current = _currentLocation;
+    if (current == null) return widget.facility.distanceKm;
+    return Geolocator.distanceBetween(
+          current.latitude,
+          current.longitude,
+          widget.facility.location.latitude,
+          widget.facility.location.longitude,
+        ) /
+        1000;
+  }
+
   Widget _buildSlots() {
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -405,6 +508,222 @@ class _ParkingSlotsPageState extends State<ParkingSlotsPage> {
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _ParkingRouteMap extends StatefulWidget {
+  final LatLng? currentLocation;
+  final LatLng parkingLocation;
+  final String facilityName;
+  final double? distanceKm;
+  final bool isLoadingLocation;
+  final String? locationMessage;
+  final VoidCallback onRetryLocation;
+
+  const _ParkingRouteMap({
+    required this.currentLocation,
+    required this.parkingLocation,
+    required this.facilityName,
+    required this.distanceKm,
+    required this.isLoadingLocation,
+    required this.locationMessage,
+    required this.onRetryLocation,
+  });
+
+  @override
+  State<_ParkingRouteMap> createState() => _ParkingRouteMapState();
+}
+
+class _ParkingRouteMapState extends State<_ParkingRouteMap> {
+  final MapController _mapController = MapController();
+
+  @override
+  void didUpdateWidget(covariant _ParkingRouteMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentLocation != widget.currentLocation) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _fitMap();
+      });
+    }
+  }
+
+  void _fitMap() {
+    final current = widget.currentLocation;
+    if (current == null) return;
+
+    final meters = Geolocator.distanceBetween(
+      current.latitude,
+      current.longitude,
+      widget.parkingLocation.latitude,
+      widget.parkingLocation.longitude,
+    );
+    if (meters < 25) {
+      _mapController.move(widget.parkingLocation, 16);
+      return;
+    }
+    _mapController.fitCamera(
+      CameraFit.bounds(
+        bounds: LatLngBounds.fromPoints([current, widget.parkingLocation]),
+        padding: const EdgeInsets.all(52),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
+    final current = widget.currentLocation;
+    final mapCenter = current == null
+        ? widget.parkingLocation
+        : LatLng(
+            (current.latitude + widget.parkingLocation.latitude) / 2,
+            (current.longitude + widget.parkingLocation.longitude) / 2,
+          );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 210,
+            child: FlutterMap(
+              mapController: _mapController,
+              options: MapOptions(
+                initialCenter: mapCenter,
+                initialZoom: current == null ? 15 : 13,
+                onMapReady: _fitMap,
+              ),
+              children: [
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.roadwise.app',
+                ),
+                if (current != null)
+                  PolylineLayer(
+                    polylines: [
+                      Polyline(
+                        points: [current, widget.parkingLocation],
+                        color: const Color(0xFFFFA352),
+                        strokeWidth: 4,
+                      ),
+                    ],
+                  ),
+                MarkerLayer(
+                  markers: [
+                    Marker(
+                      point: widget.parkingLocation,
+                      width: 48,
+                      height: 56,
+                      child: Tooltip(
+                        message: widget.facilityName,
+                        child: const Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.location_on_rounded,
+                              color: Color(0xFFFF7A59),
+                              size: 36,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (current != null)
+                      Marker(
+                        point: current,
+                        width: 48,
+                        height: 48,
+                        child: Tooltip(
+                          message: 'Your current location',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: colors.surface,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: const Color(0xFFFFA352),
+                                width: 2,
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.my_location_rounded,
+                              color: Color(0xFFFFA352),
+                              size: 23,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                RichAttributionWidget(
+                  attributions: [
+                    TextSourceAttribution('© OpenStreetMap contributors'),
+                  ],
+                  alignment: AttributionAlignment.bottomRight,
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Row(
+              children: [
+                Icon(
+                  current == null
+                      ? Icons.location_searching_rounded
+                      : Icons.route_rounded,
+                  color: const Color(0xFFFFA352),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        current == null
+                            ? 'Parking location'
+                            : 'Your location to parking',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        current == null
+                            ? widget.isLoadingLocation
+                                  ? 'Finding your current location…'
+                                  : widget.locationMessage ??
+                                        'Current location unavailable'
+                            : '${widget.distanceKm!.toStringAsFixed(2)} km straight-line distance',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: colors.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (current == null && !widget.isLoadingLocation)
+                  TextButton(
+                    onPressed: widget.onRetryLocation,
+                    child: Text(
+                      widget.locationMessage == null ? 'Retry' : 'Settings',
+                    ),
+                  )
+                else if (widget.isLoadingLocation)
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -20,6 +20,7 @@ class ParkingDetailsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -34,10 +35,7 @@ class ParkingDetailsPage extends StatelessWidget {
           children: [
             Text(
               name,
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 8),
@@ -46,14 +44,14 @@ class ParkingDetailsPage extends StatelessWidget {
               children: [
                 const Icon(
                   Icons.location_on_outlined,
-                  color: Colors.grey,
+                  color: Color(0xFFFFA352),
                 ),
                 const SizedBox(width: 6),
                 Text(
                   '$distance away',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
-                    color: Colors.grey,
+                    color: colors.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -65,30 +63,26 @@ class ParkingDetailsPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.blue.shade50,
+                color: colors.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Column(
                 children: [
-                  const Icon(
-                    Icons.local_parking,
-                    size: 55,
-                    color: Colors.blue,
-                  ),
+                  Icon(Icons.local_parking, size: 55, color: colors.primary),
                   const SizedBox(height: 12),
                   Text(
                     '$availableSlots',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 42,
                       fontWeight: FontWeight.bold,
-                      color: Colors.blue,
+                      color: colors.primary,
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Parking slots available',
                     style: TextStyle(
                       fontSize: 16,
-                      color: Colors.grey,
+                      color: colors.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -101,25 +95,25 @@ class ParkingDetailsPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: colors.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
                 children: [
                   const Icon(
                     Icons.currency_rupee,
-                    color: Colors.green,
+                    color: Color(0xFF69D598),
                     size: 30,
                   ),
                   const SizedBox(width: 12),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Parking fee',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.grey,
+                          color: colors.onSurfaceVariant,
                         ),
                       ),
                       Text(
@@ -139,10 +133,7 @@ class ParkingDetailsPage extends StatelessWidget {
 
             const Text(
               'Parking information',
-              style: TextStyle(
-                fontSize: 21,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 14),
@@ -151,18 +142,21 @@ class ParkingDetailsPage extends StatelessWidget {
               icon: Icons.local_parking,
               title: 'Availability',
               value: '$availableSlots slots available',
+              color: colors.primary,
             ),
 
             _InfoRow(
               icon: Icons.location_on_outlined,
               title: 'Distance',
               value: distance,
+              color: colors.primary,
             ),
 
             _InfoRow(
               icon: Icons.payments_outlined,
               title: 'Price',
               value: '$price per hour',
+              color: colors.primary,
             ),
 
             const SizedBox(height: 30),
@@ -175,10 +169,7 @@ class ParkingDetailsPage extends StatelessWidget {
                 icon: const Icon(Icons.event_seat),
                 label: const Text(
                   'Select Parking Slot',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
@@ -191,10 +182,7 @@ class ParkingDetailsPage extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.arrow_back),
-                label: const Text(
-                  'Back',
-                  style: TextStyle(fontSize: 16),
-                ),
+                label: const Text('Back', style: TextStyle(fontSize: 16)),
               ),
             ),
           ],
@@ -208,11 +196,13 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String value;
+  final Color color;
 
   const _InfoRow({
     required this.icon,
     required this.title,
     required this.value,
+    required this.color,
   });
 
   @override
@@ -221,11 +211,7 @@ class _InfoRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
         children: [
-          Icon(
-            icon,
-            color: Colors.blue,
-            size: 25,
-          ),
+          Icon(icon, color: color, size: 25),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -233,9 +219,9 @@ class _InfoRow extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: Colors.grey,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 2),

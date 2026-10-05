@@ -104,7 +104,7 @@ class _TrafficPageState extends State<TrafficPage> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.10),
         border: Border.all(color: color.withValues(alpha: 0.24)),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -258,8 +258,8 @@ class _TrafficPageState extends State<TrafficPage> {
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 2),
       leading: CircleAvatar(
-        backgroundColor: const Color(0xFFF9E9E4),
-        foregroundColor: const Color(0xFFB7442D),
+        backgroundColor: const Color(0xFFFF827A).withValues(alpha: 0.16),
+        foregroundColor: const Color(0xFFFFA29B),
         child: const Icon(Icons.warning_amber_rounded),
       ),
       title: Text(incident.type),
@@ -300,9 +300,11 @@ class _TrafficPageState extends State<TrafficPage> {
   }
 
   Color _statusColor(String status) {
-    if (status == 'Closed' || status == 'Heavy') return const Color(0xFFC74732);
-    if (status == 'Moderate') return const Color(0xFFD28A22);
-    return const Color(0xFF348264);
+    if (status == 'Closed' || status == 'Heavy') {
+      return const Color(0xFFFF827A);
+    }
+    if (status == 'Moderate') return const Color(0xFFFFC38C);
+    return const Color(0xFF69D598);
   }
 
   String _formatTime(DateTime value) {

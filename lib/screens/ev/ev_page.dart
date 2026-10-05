@@ -61,7 +61,8 @@ class _EvPageState extends State<EvPage> {
   // servers. Works without a key at low volume; get a free key at
   // https://openchargemap.org/site/develop/api and put it here to raise
   // your rate limit and be a good API citizen.
-  static const String _openChargeMapKey = 'e47e1999-8427-428a-8037-c0e5ee959c19'; // optional: paste your key
+  static const String _openChargeMapKey =
+      'e47e1999-8427-428a-8037-c0e5ee959c19'; // optional: paste your key
   static const String _openChargeMapUrl =
       'https://api.openchargemap.io/v3/poi/';
 
@@ -69,21 +70,6 @@ class _EvPageState extends State<EvPage> {
   void initState() {
     super.initState();
     _loadEvStations();
-  }
-
-  /// Quick reachability check against a well-known, highly-available host.
-  /// If this fails, the problem is general internet connectivity (emulator
-  /// network config, VPN, firewall) — not anything specific to one API.
-  Future<bool> _hasBasicInternet() async {
-    try {
-      final response = await http
-          .get(Uri.parse('https://www.google.com'))
-          .timeout(const Duration(seconds: 8));
-      return response.statusCode == 200;
-    } catch (e) {
-      debugPrint('EV: basic connectivity check failed: $e');
-      return false;
-    }
   }
 
   Future<void> _loadEvStations() async {
@@ -100,7 +86,7 @@ class _EvPageState extends State<EvPage> {
         location = _hardcodedLocation;
         debugPrint(
           'EV: using hardcoded location lat=${location.latitude}, '
-              'lng=${location.longitude}',
+          'lng=${location.longitude}',
         );
       } else {
         final position = await _getLocation();
@@ -111,7 +97,7 @@ class _EvPageState extends State<EvPage> {
         location = LatLng(position.latitude, position.longitude);
         debugPrint(
           'EV: got location lat=${location.latitude}, lng=${location.longitude}, '
-              'accuracy=${position.accuracy}m',
+          'accuracy=${position.accuracy}m',
         );
       }
 
@@ -119,28 +105,16 @@ class _EvPageState extends State<EvPage> {
         currentLocation = location;
       });
 
-      final online = await _hasBasicInternet();
-      if (!online) {
-        setState(() {
-          errorMessage =
-          'No internet reachable from this device/emulator at all '
-              '(google.com did not respond). This is a network/emulator '
-              'issue, not an app bug.';
-          isLoading = false;
-        });
-        return;
-      }
-
       await _findNearbyStationsWithWidening(location);
     } on TimeoutException {
       setState(() {
         errorMessage =
-        'The charging station service timed out. Please try again.';
+            'The charging station service timed out. Please try again.';
         isLoading = false;
       });
     } on SocketException {
       setState(() {
-        errorMessage = 'No internet connection. Check your network and try again.';
+        errorMessage = 'Could not connect to Open Charge Map. Check your connection and try again.';
         isLoading = false;
       });
     } catch (e) {
@@ -210,9 +184,9 @@ class _EvPageState extends State<EvPage> {
   }
 
   Future<List<_EvStation>> _findNearbyStations(
-      LatLng location,
-      int radiusKm,
-      ) async {
+    LatLng location,
+    int radiusKm,
+  ) async {
     final url = Uri.parse(_openChargeMapUrl).replace(
       queryParameters: {
         'output': 'json',
@@ -234,7 +208,7 @@ class _EvPageState extends State<EvPage> {
     if (response.statusCode != 200) {
       debugPrint(
         'EV: Open Charge Map returned ${response.statusCode}: '
-            '${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}',
+        '${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}',
       );
       throw Exception(
         'Open Charge Map request failed (${response.statusCode}).',
@@ -245,7 +219,7 @@ class _EvPageState extends State<EvPage> {
 
     debugPrint(
       'EV: Open Charge Map returned ${elements.length} stations for '
-          'radius=${radiusKm}km around ${location.latitude},${location.longitude}',
+      'radius=${radiusKm}km around ${location.latitude},${location.longitude}',
     );
 
     final found = <_EvStation>[];
@@ -259,8 +233,9 @@ class _EvPageState extends State<EvPage> {
       if (latitude == null || longitude == null) continue;
 
       final name = (addressInfo['Title'] as String?)?.trim();
-      final displayName =
-      (name == null || name.isEmpty) ? 'EV Charging Station' : name;
+      final displayName = (name == null || name.isEmpty)
+          ? 'EV Charging Station'
+          : name;
 
       // Distance from the current (hardcoded or real) location to this
       // station, in kilometers. Geolocator.distanceBetween returns meters.
@@ -309,16 +284,14 @@ class _EvPageState extends State<EvPage> {
     showModalBottomSheet(
       context: context,
       builder: (context) {
+        final colors = Theme.of(context).colorScheme;
         return Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(
-                Icons.ev_station,
-                size: 40,
-              ),
+              const Icon(Icons.ev_station, size: 40),
               const SizedBox(height: 12),
               Text(
                 station.name,
@@ -330,16 +303,16 @@ class _EvPageState extends State<EvPage> {
               const SizedBox(height: 8),
               Text(
                 '${station.distanceKm.toStringAsFixed(2)} km away',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
+                style: const TextStyle(fontSize: 16, color: Color(0xFFCCE9F1)),
               ),
               const SizedBox(height: 4),
               Text(
                 'Lat: ${station.point.latitude.toStringAsFixed(5)}, '
-                    'Lng: ${station.point.longitude.toStringAsFixed(5)}',
-                style: const TextStyle(fontSize: 13, color: Colors.black45),
+                'Lng: ${station.point.longitude.toStringAsFixed(5)}',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: colors.onSurfaceVariant.withValues(alpha: 0.75),
+                ),
               ),
               const SizedBox(height: 20),
               SizedBox(
@@ -373,9 +346,7 @@ class _EvPageState extends State<EvPage> {
 
   Widget _buildBody() {
     if (isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
+      return const Center(child: CircularProgressIndicator());
     }
 
     if (errorMessage != null) {
@@ -385,10 +356,7 @@ class _EvPageState extends State<EvPage> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(
-                Icons.location_off,
-                size: 56,
-              ),
+              const Icon(Icons.location_off, size: 56),
               const SizedBox(height: 16),
               Text(
                 errorMessage!,
@@ -399,9 +367,12 @@ class _EvPageState extends State<EvPage> {
                 const SizedBox(height: 8),
                 Text(
                   'Last known location: '
-                      '${currentLocation!.latitude.toStringAsFixed(5)}, '
-                      '${currentLocation!.longitude.toStringAsFixed(5)}',
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
+                  '${currentLocation!.latitude.toStringAsFixed(5)}, '
+                  '${currentLocation!.longitude.toStringAsFixed(5)}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
               const SizedBox(height: 16),
@@ -418,10 +389,7 @@ class _EvPageState extends State<EvPage> {
     return Stack(
       children: [
         FlutterMap(
-          options: MapOptions(
-            initialCenter: currentLocation!,
-            initialZoom: 13,
-          ),
+          options: MapOptions(initialCenter: currentLocation!, initialZoom: 13),
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
@@ -439,16 +407,14 @@ class _EvPageState extends State<EvPage> {
                   child: const Icon(
                     Icons.location_pin,
                     size: 50,
-                    color: Colors.blue,
+                    color: Color(0xFFFFA352),
                   ),
                 ),
               ],
             ),
 
             // Nearby EV charging stations.
-            MarkerLayer(
-              markers: stationMarkers,
-            ),
+            MarkerLayer(markers: stationMarkers),
           ],
         ),
 
@@ -458,10 +424,7 @@ class _EvPageState extends State<EvPage> {
           right: 16,
           child: Card(
             child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Row(
                 children: [
                   const Icon(Icons.ev_station),
@@ -483,19 +446,23 @@ class _EvPageState extends State<EvPage> {
                         if (currentLocation != null)
                           Text(
                             'Lat: ${currentLocation!.latitude.toStringAsFixed(5)}, '
-                                'Lng: ${currentLocation!.longitude.toStringAsFixed(5)}',
-                            style: const TextStyle(
+                            'Lng: ${currentLocation!.longitude.toStringAsFixed(5)}',
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.black54,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                         if (stations.isNotEmpty)
                           Text(
                             'Nearest: ${stations.first.name} '
-                                '(${stations.first.distanceKm.toStringAsFixed(2)} km)',
-                            style: const TextStyle(
+                            '(${stations.first.distanceKm.toStringAsFixed(2)} km)',
+                            style: TextStyle(
                               fontSize: 12,
-                              color: Colors.black54,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
                             ),
                           ),
                       ],
@@ -548,9 +515,9 @@ class _EvPageState extends State<EvPage> {
                             const SizedBox(height: 6),
                             Text(
                               '${station.distanceKm.toStringAsFixed(2)} km away',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: Colors.deepOrange,
+                                color: Theme.of(context).colorScheme.primary,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
