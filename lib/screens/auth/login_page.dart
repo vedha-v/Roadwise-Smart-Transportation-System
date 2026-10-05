@@ -90,13 +90,13 @@ class _LoginPageState extends State<LoginPage> {
                   width: double.infinity,
                   height: 104,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFDCEBE3),
+                    color: colors.primary.withValues(alpha: 0.16),
                     borderRadius: BorderRadius.circular(28),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.directions_car_rounded,
                     size: 48,
-                    color: Color(0xFF17201B),
+                    color: colors.primary,
                   ),
                 ),
                 const SizedBox(height: 24),

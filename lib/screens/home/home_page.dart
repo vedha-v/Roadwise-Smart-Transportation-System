@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../screens/parking/parking_page.dart';
 import '../../screens/ev/ev_page.dart';
+import '../../screens/freight/freight_page.dart';
 import '../../screens/traffic/traffic_page.dart';
 
 /// RoadWise palette — blue grain-gradient backdrop + frosted glass cards,
@@ -37,25 +38,15 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBodyBehindAppBar: true,
-      extendBody: true,
-      body: Stack(
-        children: [
-          // Your exact blue grain-gradient image, shipped alongside this
-          // file at assets/images/home_bg.jpg — copy that folder into
-          // your project root and register it in pubspec.yaml:
-          //   flutter:
-          //     assets:
-          //       - assets/images/home_bg.jpg
-          Positioned.fill(
-            child: Image.asset('assets/images/home_bg.jpg', fit: BoxFit.cover),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF0B1732), Color(0xFF122A4A)],
           ),
-          // Subtle scrim for text legibility.
-          Positioned.fill(
-            child: Container(color: Colors.black.withValues(alpha: 0.12)),
-          ),
-
-          SafeArea(
+        ),
+        child: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
               child: Column(
@@ -230,6 +221,14 @@ class HomePage extends StatelessWidget {
                       _QuickActionIcon(
                         icon: Icons.local_shipping,
                         label: 'Freight',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const FreightPage(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -318,7 +317,6 @@ class HomePage extends StatelessWidget {
               ),
             ),
           ),
-        ],
       ),
     );
   }

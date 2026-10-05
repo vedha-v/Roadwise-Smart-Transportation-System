@@ -14,7 +14,7 @@ class RoadWiseApp extends StatefulWidget {
 }
 
 class _RoadWiseAppState extends State<RoadWiseApp> {
-  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode _themeMode = ThemeMode.dark;
 
   void _changeThemeMode(ThemeMode mode) {
     setState(() {
@@ -71,16 +71,12 @@ class _MainShellState extends State<MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
-
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: NavigationBar(
-        height: 86,
+        height: 76,
         elevation: 0,
-        backgroundColor: colors.surface,
         surfaceTintColor: Colors.transparent,
-        indicatorColor: const Color(0xFFDCEBE3),
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) {
           setState(() {
@@ -90,47 +86,23 @@ class _MainShellState extends State<MainShell> {
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: const [
           NavigationDestination(
-            icon: Icon(
-              Icons.home_outlined,
-              color: Color(0xFF17201B),
-            ),
-            selectedIcon: Icon(
-              Icons.home,
-              color: Color(0xFF17201B),
-            ),
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home),
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(
-              Icons.explore_outlined,
-              color: Color(0xFF17201B),
-            ),
-            selectedIcon: Icon(
-              Icons.explore,
-              color: Color(0xFF17201B),
-            ),
+            icon: Icon(Icons.explore_outlined),
+            selectedIcon: Icon(Icons.explore),
             label: 'Explore',
           ),
           NavigationDestination(
-            icon: Icon(
-              Icons.confirmation_number_outlined,
-              color: Color(0xFF17201B),
-            ),
-            selectedIcon: Icon(
-              Icons.confirmation_number,
-              color: Color(0xFF17201B),
-            ),
+            icon: Icon(Icons.confirmation_number_outlined),
+            selectedIcon: Icon(Icons.confirmation_number),
             label: 'Bookings',
           ),
           NavigationDestination(
-            icon: Icon(
-              Icons.person_outline,
-              color: Color(0xFF17201B),
-            ),
-            selectedIcon: Icon(
-              Icons.person,
-              color: Color(0xFF17201B),
-            ),
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
             label: 'Profile',
           ),
         ],
